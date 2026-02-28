@@ -152,6 +152,10 @@ public class PolyPixelator extends JFrame {
     private volatile int dialogVerticalPos = 80;
     private JTextField dialogNameField;
     private JTextArea dialogTextArea;
+    private javax.swing.Timer dialogDebounceTimer;
+
+    // Border option (Sora-style)
+    private volatile boolean borderEnabled = false;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // UI BUILD (Windows 95/98)
@@ -234,9 +238,15 @@ public class PolyPixelator extends JFrame {
             outlineEnabled = outlineBtn.isSelected();
             scheduleProcess();
         });
+        JToggleButton borderBtn = createWinToggleButton("Border");
+        borderBtn.addActionListener(e -> {
+            borderEnabled = borderBtn.isSelected();
+            scheduleProcess();
+        });
         fxContent.add(ditherBtn);
         fxContent.add(ghostBtn);
         fxContent.add(outlineBtn);
+        fxContent.add(borderBtn);
         bottomDock.add(createTitledSection("FX", fxContent));
 
         addDockSeparator(bottomDock);
@@ -354,9 +364,9 @@ public class PolyPixelator extends JFrame {
         ));
 
         DocumentListener docListener = new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { triggerDialogRedraw(); }
-            @Override public void removeUpdate(DocumentEvent e) { triggerDialogRedraw(); }
-            @Override public void changedUpdate(DocumentEvent e) { triggerDialogRedraw(); }
+            @Override public void insertUpdate(DocumentEvent e) { scheduleDialogRedraw(); }
+            @Override public void removeUpdate(DocumentEvent e) { scheduleDialogRedraw(); }
+            @Override public void changedUpdate(DocumentEvent e) { scheduleDialogRedraw(); }
         };
 
         JCheckBox onOffCheck = new JCheckBox("ON / OFF", false);
@@ -365,15 +375,15 @@ public class PolyPixelator extends JFrame {
         onOffCheck.setOpaque(false);
         onOffCheck.addActionListener(e -> {
             dialogEnabled = onOffCheck.isSelected();
-            triggerDialogRedraw();
+            scheduleProcess();
         });
 
         ButtonGroup styleGroup = new ButtonGroup();
         JToggleButton jrpgBtn = createWinToggleButton("JRPG Box");
         jrpgBtn.setSelected(true);
-        jrpgBtn.addActionListener(e -> { dialogStyleJRPG = true; triggerDialogRedraw(); });
+        jrpgBtn.addActionListener(e -> { dialogStyleJRPG = true; scheduleProcess(); });
         JToggleButton termBtn = createWinToggleButton("Terminal");
-        termBtn.addActionListener(e -> { dialogStyleJRPG = false; triggerDialogRedraw(); });
+        termBtn.addActionListener(e -> { dialogStyleJRPG = false; scheduleProcess(); });
         styleGroup.add(jrpgBtn);
         styleGroup.add(termBtn);
 
@@ -398,7 +408,7 @@ public class PolyPixelator extends JFrame {
         vertSlider.setPreferredSize(new Dimension(180, 28));
         vertSlider.addChangeListener(e -> {
             dialogVerticalPos = vertSlider.getValue();
-            triggerDialogRedraw();
+            scheduleProcess();
         });
 
         onOffCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -429,11 +439,11 @@ public class PolyPixelator extends JFrame {
         return content;
     }
 
-    private void triggerDialogRedraw() {
-        if (canvas != null && dialogNameField != null && dialogTextArea != null) {
-            canvas.updateDialogParams(dialogEnabled, dialogStyleJRPG,
-                dialogNameField.getText(), dialogTextArea.getText(), dialogVerticalPos);
-        }
+    private void scheduleDialogRedraw() {
+        if (dialogDebounceTimer != null) dialogDebounceTimer.stop();
+        dialogDebounceTimer = new Timer(200, e -> scheduleProcess());
+        dialogDebounceTimer.setRepeats(false);
+        dialogDebounceTimer.start();
     }
 
     private void addDockSeparator(JPanel dock) {
@@ -475,7 +485,10 @@ public class PolyPixelator extends JFrame {
         try {
             BufferedImage raw = ImageIO.read(fc.getSelectedFile());
             if (raw == null) throw new Exception("Unsupported format");
-            originalImage = new BufferedImage(raw.getWidth(), raw.getHeight(), BufferedImage.TYPE_INT_RGB);
+            int w = raw.getWidth();
+            int h = raw.getHeight();
+            if (w <= 0 || h <= 0) throw new Exception("Invalid image dimensions");
+            originalImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = originalImage.createGraphics();
             g.drawImage(raw, 0, 0, null);
             g.dispose();
@@ -497,7 +510,11 @@ public class PolyPixelator extends JFrame {
             try {
                 BufferedImage toSave = processedImage;
                 if (dialogEnabled && dialogNameField != null && dialogTextArea != null) {
-                    toSave = applyDialogToImage(processedImage, dialogNameField.getText(), dialogTextArea.getText());
+                    String nm = dialogNameField.getText();
+                    String tx = dialogTextArea.getText();
+                    if (!nm.isEmpty() || !tx.isEmpty()) {
+                        toSave = applyDialogToImage(processedImage, nm, tx, dialogStyleJRPG, dialogVerticalPos);
+                    }
                 }
                 ImageIO.write(toSave, "png", fc.getSelectedFile());
                 statusLabel.setText(" Saved to " + fc.getSelectedFile().getName());
@@ -507,21 +524,21 @@ public class PolyPixelator extends JFrame {
         }
     }
 
-    private BufferedImage applyDialogToImage(BufferedImage src, String name, String text) {
+    private BufferedImage applyDialogToImage(BufferedImage src, String name, String text, boolean styleJRPG, int verticalPos) {
         if (name == null) name = "";
         if (text == null) text = "";
         if (name.isEmpty() && text.isEmpty()) return src;
         BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g2 = out.createGraphics();
         g2.drawImage(src, 0, 0, null);
-        drawDialogOntoGraphics(g2, src.getWidth(), src.getHeight(), name, text);
+        drawDialogOntoGraphics(g2, src.getWidth(), src.getHeight(), name, text, styleJRPG, verticalPos);
         g2.dispose();
         return out;
     }
 
-    private void drawDialogOntoGraphics(Graphics2D g2, int imgW, int imgH, String name, String text) {
+    private void drawDialogOntoGraphics(Graphics2D g2, int imgW, int imgH, String name, String text, boolean styleJRPG, int verticalPos) {
         int margin = 20;
-        int boxY = (int) (imgH * (dialogVerticalPos / 100.0));
+        int boxY = (int) (imgH * (verticalPos / 100.0));
         int boxW = imgW - 2 * margin;
         int lineH = Math.max(14, imgH / 25);
         int padding = lineH / 2;
@@ -529,7 +546,7 @@ public class PolyPixelator extends JFrame {
         boxY = Math.max(0, Math.min(boxY, imgH - boxH - padding));
         int boxX = margin;
 
-        if (dialogStyleJRPG) {
+        if (styleJRPG) {
             g2.setColor(Color.BLACK);
             g2.fillRect(boxX, boxY, boxW, boxH);
             g2.setColor(Color.WHITE);
@@ -587,7 +604,13 @@ public class PolyPixelator extends JFrame {
         final boolean dither = ditherEnabled;
         final boolean ghost = ghostEnabled;
         final boolean outline = outlineEnabled;
+        final boolean border = borderEnabled;
         final int palIdx = paletteIndex;
+        final boolean dlgOn = dialogEnabled;
+        final boolean dlgJRPG = dialogStyleJRPG;
+        final int dlgVert = dialogVerticalPos;
+        final String dlgName = dialogNameField != null ? dialogNameField.getText() : "";
+        final String dlgText = dialogTextArea != null ? dialogTextArea.getText() : "";
 
         SwingWorker<BufferedImage, Void> worker = new SwingWorker<BufferedImage, Void>() {
             @Override
@@ -597,8 +620,12 @@ public class PolyPixelator extends JFrame {
                 BufferedImage result = applyPaletteWithDither(downsampled, PALETTES[palIdx], dither);
                 if (outline) result = applyOutline(result, block, PALETTES[palIdx]);
                 if (ghost) result = applyGhost(result, 10, 10, 0.3f);
+                if (border) result = applyBorder(result);
+                if (dlgOn && (!dlgName.isEmpty() || !dlgText.isEmpty())) {
+                    result = applyDialogToImage(result, dlgName, dlgText, dlgJRPG, dlgVert);
+                }
                 long ms = (System.nanoTime() - t0) / 1_000_000;
-                final String msg = " Processed in " + ms + " ms  |  Block: " + block + "px  |  Dither: " + (dither ? "ON" : "OFF") + "  |  Ghost: " + (ghost ? "ON" : "OFF") + "  |  Outline: " + (outline ? "ON" : "OFF") + "  |  Palette: " + PALETTE_NAMES[palIdx];
+                final String msg = " Processed in " + ms + " ms  |  Block: " + block + "px  |  Dither: " + (dither ? "ON" : "OFF") + "  |  Ghost: " + (ghost ? "ON" : "OFF") + "  |  Outline: " + (outline ? "ON" : "OFF") + "  |  Border: " + (border ? "ON" : "OFF") + "  |  Palette: " + PALETTE_NAMES[palIdx];
                 SwingUtilities.invokeLater(() -> statusLabel.setText(msg));
                 return result;
             }
@@ -608,7 +635,6 @@ public class PolyPixelator extends JFrame {
                 try {
                     processedImage = get();
                     canvas.setImage(processedImage);
-                    triggerDialogRedraw();
                 } catch (Exception ignored) {}
                 processing.set(false);
             }
@@ -776,6 +802,20 @@ public class PolyPixelator extends JFrame {
                 }
             }
         }
+        return out;
+    }
+
+    /** Add 2px border around image (Sora's Pixel Converter style). */
+    private BufferedImage applyBorder(BufferedImage src) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        int bw = 2;
+        BufferedImage out = new BufferedImage(w + 2 * bw, h + 2 * bw, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = out.createGraphics();
+        g2.setColor(Color.BLACK);
+        g2.fillRect(0, 0, out.getWidth(), out.getHeight());
+        g2.drawImage(src, bw, bw, null);
+        g2.dispose();
         return out;
     }
 
@@ -983,11 +1023,6 @@ public class PolyPixelator extends JFrame {
 
     private static class ImageCanvas extends JPanel {
         private BufferedImage image;
-        private boolean dialogEnabled;
-        private boolean dialogStyleJRPG;
-        private String dialogName = "";
-        private String dialogText = "";
-        private int dialogVerticalPos = 80;
 
         ImageCanvas() {
             setOpaque(true);
@@ -996,17 +1031,11 @@ public class PolyPixelator extends JFrame {
 
         void setImage(BufferedImage img) {
             this.image = img;
-            setPreferredSize(img != null ? new Dimension(img.getWidth(), img.getHeight()) : new Dimension(400, 300));
+            Dimension d = img != null ? new Dimension(img.getWidth(), img.getHeight()) : new Dimension(400, 300);
+            setPreferredSize(d);
+            setMinimumSize(d);
+            setMaximumSize(d);
             revalidate();
-            repaint();
-        }
-
-        void updateDialogParams(boolean enabled, boolean styleJRPG, String name, String text, int verticalPos) {
-            this.dialogEnabled = enabled;
-            this.dialogStyleJRPG = styleJRPG;
-            this.dialogName = name != null ? name : "";
-            this.dialogText = text != null ? text : "";
-            this.dialogVerticalPos = verticalPos;
             repaint();
         }
 
@@ -1028,74 +1057,6 @@ public class PolyPixelator extends JFrame {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
             g2.drawImage(image, x, y, null);
-
-            if (dialogEnabled && (!dialogName.isEmpty() || !dialogText.isEmpty())) {
-                g2.translate(x, y);
-                drawDialogOverlay(g2, imgW, imgH);
-                g2.translate(-x, -y);
-            }
-        }
-
-        private void drawDialogOverlay(Graphics2D g2, int imgW, int imgH) {
-            int margin = 20;
-            int boxY = (int) (imgH * (dialogVerticalPos / 100.0));
-            int boxW = imgW - 2 * margin;
-            int lineH = Math.max(14, imgH / 25);
-            int padding = lineH / 2;
-            int boxH = padding * 2 + lineH * 3;
-            boxY = Math.max(0, Math.min(boxY, imgH - boxH - padding));
-            int boxX = margin;
-
-            if (dialogStyleJRPG) {
-                g2.setColor(Color.BLACK);
-                g2.fillRect(boxX, boxY, boxW, boxH);
-                g2.setColor(Color.WHITE);
-                g2.setStroke(new BasicStroke(3));
-                g2.drawRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
-                g2.setStroke(new BasicStroke(1));
-
-                int fontSize = Math.max(10, Math.min(24, imgH / 20));
-                Font font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize);
-                g2.setFont(font);
-                FontMetrics fm = g2.getFontMetrics();
-                int textX = boxX + padding + 3;
-                int textY = boxY + padding + fm.getAscent();
-
-                if (!dialogName.isEmpty()) {
-                    g2.setColor(Color.YELLOW);
-                    g2.drawString(dialogName, textX, textY);
-                    textY += lineH;
-                }
-                g2.setColor(Color.WHITE);
-                for (String line : dialogText.split("\n")) {
-                    if (textY > boxY + boxH - padding) break;
-                    g2.drawString(line, textX, textY);
-                    textY += lineH;
-                }
-            } else {
-                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f));
-                g2.setColor(Color.BLACK);
-                g2.fillRect(boxX, boxY, boxW, boxH);
-                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
-
-                int fontSize = Math.max(10, Math.min(20, imgH / 25));
-                Font font = new Font(Font.SANS_SERIF, Font.PLAIN, fontSize);
-                g2.setFont(font);
-                g2.setColor(new Color(0x00, 0xFF, 0x00));
-                FontMetrics fm = g2.getFontMetrics();
-                int textX = boxX + padding;
-                int textY = boxY + padding + fm.getAscent();
-
-                if (!dialogName.isEmpty()) {
-                    g2.drawString(dialogName, textX, textY);
-                    textY += lineH;
-                }
-                for (String line : dialogText.split("\n")) {
-                    if (textY > boxY + boxH - padding) break;
-                    g2.drawString(line, textX, textY);
-                    textY += lineH;
-                }
-            }
         }
     }
 
