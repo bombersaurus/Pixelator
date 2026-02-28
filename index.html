@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Poly Pixelator — Sora's Pixel Converter</title>
 <style>
   :root {
@@ -23,9 +23,11 @@
     font-size: 11px;
     color: #000;
     height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    overflow-x: hidden;
     background: var(--bg-green);
     -webkit-font-smoothing: none;
     -moz-osx-font-smoothing: unset;
@@ -236,6 +238,7 @@
     border: 2px solid;
     border-color: var(--win-highlight) var(--win-shadow) var(--win-shadow) var(--win-highlight);
     cursor: pointer;
+    touch-action: manipulation;
   }
   .win-btn:hover {
     background: #d4d0c8;
@@ -253,6 +256,7 @@
     border: 2px solid;
     border-color: var(--win-highlight) var(--win-shadow) var(--win-shadow) var(--win-highlight);
     cursor: pointer;
+    touch-action: manipulation;
   }
   .toggle-btn:hover {
     background: #d4d0c8;
@@ -367,6 +371,59 @@
     pointer-events: none;
   }
   .drop-overlay.visible { display: flex; }
+
+  /* ── Mobile responsive ───────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .main-row { flex-direction: column; }
+    .right-sidebar {
+      width: 100%;
+      min-width: 0;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      border-left: none;
+      border-top: 1px solid var(--win-shadow);
+    }
+    .bg-section .section-content { flex-direction: row; }
+    .preview-window { width: 98%; height: 50vh; max-width: 98%; max-height: 50vh; }
+    .bottom-dock {
+      flex-direction: column;
+      max-height: 45vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 8px;
+    }
+    .dock-section {
+      flex-wrap: wrap;
+      border-right: none;
+      border-bottom: 1px solid var(--win-shadow);
+      padding-right: 0;
+      padding-bottom: 6px;
+      margin-bottom: 4px;
+    }
+    .dock-section:last-child { border-bottom: none; }
+    .titled-section .section-content { flex-wrap: wrap; }
+    .win-btn, .toggle-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+    .dialog-style-btn { min-height: 40px; padding: 6px 10px; font-size: 11px; }
+    .dialog-input { width: 100px; min-width: 80px; font-size: 14px; padding: 8px; }
+    .dialog-slider { width: 100px; min-width: 80px; height: 28px; }
+    .palette-scroll { max-width: 100%; }
+  }
+
+  @media (max-width: 480px) {
+    body { font-size: 12px; }
+    .preview-window { min-width: 0; min-height: 180px; }
+    .bottom-dock { max-height: 40vh; gap: 6px; }
+    .dialog-panel .section-content { flex-direction: column; align-items: stretch; }
+    .dialog-input-row, .dialog-slider-row { width: 100%; }
+    .dialog-input { flex: 1; max-width: 140px; }
+    .palette-btn { min-width: 52px; }
+  }
 </style>
 </head>
 <body id="body">
