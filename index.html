@@ -96,10 +96,12 @@
   .preview-window {
     display: flex;
     flex-direction: column;
-    min-width: 320px;
-    min-height: 240px;
-    max-width: calc(100vw - 48px);
-    max-height: calc(100vh - 180px);
+    width: 84%;
+    height: 84%;
+    max-width: 84%;
+    max-height: 84%;
+    min-width: 200px;
+    min-height: 150px;
     border: 2px solid;
     border-color: var(--win-highlight) var(--win-shadow-dark) var(--win-shadow-dark) var(--win-highlight);
     background: var(--win-bg);
@@ -118,33 +120,6 @@
     min-height: 18px;
   }
 
-  .preview-window .window-buttons {
-    display: flex;
-    gap: 2px;
-  }
-
-  .preview-window .window-btn {
-    width: 16px;
-    height: 14px;
-    padding: 0;
-    font-size: 9px;
-    line-height: 1;
-    font-family: inherit;
-    background: var(--win-bg);
-    color: #000;
-    border: 1px solid;
-    border-color: var(--win-highlight) var(--win-shadow-dark) var(--win-shadow-dark) var(--win-highlight);
-    cursor: pointer;
-  }
-
-  .preview-window .window-btn:hover {
-    background: #d4d0c8;
-  }
-
-  .preview-window .window-btn:active {
-    border-color: var(--win-shadow-dark) var(--win-highlight) var(--win-highlight) var(--win-shadow-dark);
-  }
-
   /* Canvas frame — sunken/inset 3D */
   .canvas-frame {
     flex: 1;
@@ -158,7 +133,16 @@
     justify-content: center;
     overflow: auto;
     cursor: pointer;
-    min-height: 160px;
+    min-height: 0;
+  }
+
+  .canvas-frame.border-blackwhite {
+    border: 4px solid #000 !important;
+    box-shadow: inset 0 0 0 1px #fff !important;
+  }
+  .canvas-frame.border-navy {
+    border: 4px solid #000080 !important;
+    box-shadow: inset 0 0 0 1px #4169e1 !important;
   }
 
   .canvas-frame:hover {
@@ -170,6 +154,9 @@
     image-rendering: crisp-edges;
     max-width: 100%;
     max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
     display: block;
     background: #808080;
   }
@@ -193,7 +180,8 @@
     display: flex;
     align-items: stretch;
     gap: 8px;
-    padding: 6px 10px;
+    padding: 10px 10px 10px 10px;
+    margin-bottom: 8px;
     background: var(--win-bg);
     border-top: 1px solid var(--win-shadow);
     flex-wrap: wrap;
@@ -274,6 +262,43 @@
     background: #a0a0a0;
   }
 
+  /* DIALOG panel */
+  .dialog-panel {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .dialog-styles {
+    display: flex;
+    gap: 2px;
+  }
+  .dialog-style-btn { padding: 2px 6px; font-size: 10px; }
+  .dialog-input-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dialog-input-row label { font-size: 10px; width: 28px; }
+  .dialog-input {
+    font-family: 'MS Sans Serif', 'Microsoft Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+    font-size: 11px;
+    padding: 2px 6px;
+    width: 70px;
+    border: 2px solid;
+    border-color: var(--win-shadow-dark) var(--win-highlight) var(--win-highlight) var(--win-shadow-dark);
+    background: #fff;
+  }
+  .dialog-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dialog-slider-row label { font-size: 10px; white-space: nowrap; }
+  .dialog-slider {
+    width: 60px;
+    height: 14px;
+    cursor: pointer;
+  }
+
   /* Palette buttons */
   .palette-btn {
     display: flex;
@@ -319,7 +344,8 @@
   }
 
   .status-bar {
-    padding: 4px 10px;
+    padding: 8px 10px;
+    margin-top: 0;
     font-size: 11px;
     color: #000;
     background: var(--win-bg);
@@ -350,11 +376,6 @@
   <div class="preview-window" id="previewWindow">
     <div class="window-title-bar" id="windowTitleBar">
       <span>pixalator</span>
-      <div class="window-buttons">
-        <button class="window-btn" title="Minimize">_</button>
-        <button class="window-btn" title="Maximize">□</button>
-        <button class="window-btn" title="Close">×</button>
-      </div>
     </div>
     <div class="canvas-frame" id="canvasFrame">
       <canvas id="canvas" width="0" height="0"></canvas>
@@ -386,10 +407,10 @@
   <div class="dock-section titled-section">
     <div class="title-bar">Size</div>
     <div class="section-content">
+      <button class="toggle-btn" data-size="1">1px</button>
+      <button class="toggle-btn" data-size="2">2px</button>
       <button class="toggle-btn" data-size="4">4px</button>
-      <button class="toggle-btn" data-size="8">8px</button>
-      <button class="toggle-btn pressed" data-size="16">16px</button>
-      <button class="toggle-btn" data-size="32">32px</button>
+      <button class="toggle-btn pressed" data-size="6">6px</button>
     </div>
   </div>
 
@@ -406,6 +427,44 @@
     <div class="title-bar">Palette</div>
     <div class="section-content">
       <div class="palette-scroll" id="paletteScroll"></div>
+    </div>
+  </div>
+
+  <div class="dock-section titled-section">
+    <div class="title-bar">Border</div>
+    <div class="section-content">
+      <button class="toggle-btn" id="borderToggle">OFF</button>
+      <button class="toggle-btn border-btn pressed" data-border="blackwhite">Black/White</button>
+      <button class="toggle-btn border-btn" data-border="navy">Navy</button>
+    </div>
+  </div>
+
+  <div class="dock-section titled-section">
+    <div class="title-bar">DIALOG</div>
+    <div class="section-content dialog-panel">
+      <button class="toggle-btn" id="dialogToggle" data-on="OFF">OFF</button>
+      <div class="dialog-styles">
+        <button class="toggle-btn dialog-style-btn pressed" data-style="jrpg">JRPG</button>
+        <button class="toggle-btn dialog-style-btn" data-style="classic">Classic</button>
+        <button class="toggle-btn dialog-style-btn" data-style="modern">Modern</button>
+        <button class="toggle-btn dialog-style-btn" data-style="ghost">Ghost</button>
+      </div>
+      <div class="dialog-input-row">
+        <label>Name</label>
+        <input type="text" class="dialog-input" id="dialogName" placeholder="Fern" maxlength="32">
+      </div>
+      <div class="dialog-input-row">
+        <label>Text</label>
+        <input type="text" class="dialog-input" id="dialogText" placeholder=":3" maxlength="128">
+      </div>
+      <div class="dialog-slider-row">
+        <label>Position</label>
+        <input type="range" class="dialog-slider" id="dialogPosition" min="0" max="100" value="85">
+      </div>
+      <div class="dialog-slider-row">
+        <label>Box Size</label>
+        <input type="range" class="dialog-slider" id="dialogBoxSize" min="10" max="100" value="45" step="1">
+      </div>
     </div>
   </div>
 </div>
@@ -427,67 +486,80 @@ const PALETTES = {
     [0x2e,0xcc,0x71],[0x34,0x98,0xdb],[0x9b,0x59,0xb6],[0xe7,0x4c,0x3c],
     [0xf3,0x9c,0x12],[0x1a,0xbc,0x9c],[0xfd,0xad,0xb9],[0xb8,0xe0,0xf0],
   ],
-  pico8: [
-    [0x00,0x00,0x00],[0x1d,0x2b,0x53],[0x7e,0x25,0x53],[0x00,0x87,0x51],
-    [0xab,0x52,0x36],[0x5f,0x57,0x4f],[0xc2,0xc3,0xc7],[0xff,0xf1,0xe8],
-    [0xff,0x00,0x4d],[0xff,0xa3,0x00],[0xff,0xec,0x27],[0x00,0xe4,0x36],
-    [0x29,0xad,0xff],[0x83,0x76,0x9c],[0xff,0x77,0xa8],[0xff,0xcc,0xaa],
+  glossyvista: [
+    [0x00,0xd4,0xff],[0x33,0xdd,0xff],[0x66,0xe6,0xff],[0x99,0xf0,0xff],
+    [0x33,0xff,0x33],[0x66,0xff,0x66],[0x99,0xff,0x99],[0xff,0xff,0xff],
+    [0x87,0xce,0xeb],[0x4a,0x90,0xe2],[0x1e,0x3a,0x8a],[0x0a,0x1f,0x5c],
+    [0x00,0xbf,0xff],[0x7f,0xff,0x00],[0xff,0xff,0xff],[0x00,0x80,0xff],
   ],
-  cga: [
-    [0x00,0x00,0x00],[0x55,0x55,0x55],[0xaa,0xaa,0xaa],[0xff,0xff,0xff],
-    [0x00,0x00,0xaa],[0x55,0x55,0xff],[0x00,0xaa,0x00],[0x55,0xff,0x55],
-    [0x00,0xaa,0xaa],[0x55,0xff,0xff],[0xaa,0x00,0x00],[0xff,0x55,0x55],
-    [0xaa,0x00,0xaa],[0xff,0x55,0xff],[0xaa,0x55,0x00],[0xff,0xff,0x55],
+  warmautumn: [
+    [0x1a,0x0a,0x00],[0x4a,0x20,0x00],[0x8b,0x45,0x00],[0xc6,0x78,0x00],
+    [0xcd,0x85,0x32],[0xe6,0x99,0x33],[0xff,0xb3,0x47],[0xff,0xcc,0x80],
+    [0x8b,0x45,0x13],[0xa0,0x52,0x2d],[0xcd,0x5c,0x5c],[0xda,0x70,0x6a],
+    [0x4a,0x2c,0x0a],[0x6b,0x3e,0x1a],[0xff,0xd7,0x00],[0xff,0xef,0xd5],
   ],
-  c64: [
-    [0x00,0x00,0x00],[0xff,0xff,0xff],[0x88,0x39,0x32],[0x67,0xb6,0xbd],
-    [0x8b,0x3f,0x96],[0x55,0xa0,0x49],[0x40,0x31,0x8d],[0xbf,0xce,0x72],
-    [0x8b,0x54,0x29],[0x57,0x42,0x00],[0xb8,0x69,0x62],[0x50,0x50,0x50],
-    [0x78,0x78,0x78],[0x94,0xe0,0x89],[0x78,0x69,0xc4],[0x9f,0x9f,0x9f],
-  ],
-  windows95: [
-    [0x00,0x00,0x00],[0x00,0x80,0x80],[0x80,0x00,0x00],[0x00,0x00,0x80],
-    [0x80,0x80,0x00],[0x80,0x00,0x80],[0x00,0x80,0x00],[0x80,0x80,0x80],
-    [0xc0,0xc0,0xc0],[0x00,0xff,0xff],[0xff,0x00,0x00],[0x00,0x00,0xff],
-    [0xff,0xff,0x00],[0xff,0x00,0xff],[0x00,0xff,0x00],[0xff,0xff,0xff],
-  ],
-  vaporwave: [
-    [0x0d,0x02,0x22],[0x1a,0x05,0x3d],[0x2d,0x0a,0x5c],[0x4b,0x0d,0x8a],
-    [0xff,0x71,0xce],[0x01,0xcd,0xfe],[0x05,0xff,0xa1],[0xb9,0x67,0xff],
-    [0xff,0xfb,0x96],[0xff,0x6e,0xb4],[0x7d,0xf9,0xff],[0x39,0xff,0x14],
-    [0xe0,0xac,0x69],[0x94,0x00,0xd3],[0x00,0x00,0x80],[0xff,0x14,0x93],
-  ],
-  appleii: [
-    [0x00,0x00,0x00],[0x55,0x55,0x55],[0xff,0xff,0xff],[0x00,0x88,0x00],
-    [0x00,0xff,0x00],[0x00,0x00,0xff],[0x55,0x55,0xff],[0xff,0x00,0x00],
-    [0xff,0x55,0x55],[0xff,0x88,0x00],[0xff,0xff,0x00],[0x88,0x00,0x88],
-    [0xff,0x00,0xff],[0x00,0x88,0x88],[0x00,0xff,0xff],[0xaa,0xaa,0xaa],
-  ],
-  cyberpunk: [
-    [0x0a,0x0a,0x12],[0x12,0x12,0x25],[0x1e,0x1e,0x3c],[0x2a,0x2a,0x50],
-    [0xff,0x00,0x99],[0x00,0xff,0xee],[0xff,0x66,0x00],[0x99,0x00,0xff],
-    [0x00,0xcc,0xff],[0xff,0x00,0xff],[0x33,0xff,0x99],[0xff,0xcc,0x00],
-    [0x66,0x33,0xff],[0xff,0x33,0x66],[0x66,0xff,0xff],[0xff,0xff,0x00],
-  ],
-  monochrome: [
-    [0x00,0x00,0x00],[0x11,0x11,0x11],[0x22,0x22,0x22],[0x33,0x33,0x33],
-    [0x44,0x44,0x44],[0x55,0x55,0x55],[0x66,0x66,0x66],[0x77,0x77,0x77],
-    [0x88,0x88,0x88],[0x99,0x99,0x99],[0xaa,0xaa,0xaa],[0xbb,0xbb,0xbb],
-    [0xcc,0xcc,0xcc],[0xdd,0xdd,0xdd],[0xee,0xee,0xee],[0xff,0xff,0xff],
+  brightwinter: [
+    [0xe0,0xff,0xff],[0xb0,0xe0,0xff],[0x87,0xce,0xeb],[0xad,0xd8,0xe6],
+    [0xff,0xff,0xff],[0xf0,0xf8,0xff],[0xe6,0xf2,0xff],[0xcf,0xe9,0xff],
+    [0x00,0xbf,0xff],[0x5d,0xae,0xea],[0x7b,0x68,0xee],[0x93,0x70,0xdb],
+    [0xb0,0xc4,0xde],[0xc8,0xd4,0xe8],[0x70,0x80,0x90],[0x2f,0x4f,0x6f],
   ],
 };
 
 const PALETTE_NAMES = {
+  original: 'Original',
   frutigeraero: 'Frutiger Aero',
-  pico8: 'PICO-8',
-  cga: 'CGA',
-  c64: 'C64',
-  windows95: 'Windows 95',
-  vaporwave: 'Vaporwave',
-  appleii: 'Apple II',
-  cyberpunk: 'Cyberpunk',
-  monochrome: 'Monochrome',
+  glossyvista: 'Glossy Vista',
+  warmautumn: 'Warm Autumn',
+  brightwinter: 'Bright Winter',
 };
+
+const PALETTE_ORDER = ['original', 'frutigeraero', 'glossyvista', 'warmautumn', 'brightwinter'];
+
+function extractOriginalPalette(data, w, h) {
+  const colors = [];
+  const step = Math.max(1, Math.floor((w * h) / 4096));
+  for (let i = 0; i < data.length; i += step * 4) {
+    if (data[i + 3] > 128) {
+      colors.push([data[i], data[i + 1], data[i + 2]]);
+    }
+  }
+  if (colors.length < 16) {
+    const out = [...colors];
+    while (out.length < 16) out.push(colors[out.length % colors.length] || [128, 128, 128]);
+    return out.slice(0, 16);
+  }
+  function splitBox(arr) {
+    let minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
+    for (const c of arr) {
+      minR = Math.min(minR, c[0]); maxR = Math.max(maxR, c[0]);
+      minG = Math.min(minG, c[1]); maxG = Math.max(maxG, c[1]);
+      minB = Math.min(minB, c[2]); maxB = Math.max(maxB, c[2]);
+    }
+    const spanR = maxR - minR, spanG = maxG - minG, spanB = maxB - minB;
+    const ch = spanR >= spanG && spanR >= spanB ? 0 : spanG >= spanB ? 1 : 2;
+    arr.sort((a, b) => a[ch] - b[ch]);
+    const mid = Math.floor(arr.length / 2);
+    return [arr.slice(0, mid), arr.slice(mid)];
+  }
+  let boxes = [colors];
+  while (boxes.length < 16) {
+    let best = -1, bestSize = 0;
+    for (let i = 0; i < boxes.length; i++) {
+      if (boxes[i].length > bestSize) { bestSize = boxes[i].length; best = i; }
+    }
+    if (best < 0 || bestSize <= 1) break;
+    const [a, b] = splitBox([...boxes[best]]);
+    boxes = [...boxes.slice(0, best), ...(a.length ? [a] : []), ...(b.length ? [b] : []), ...boxes.slice(best + 1)];
+  }
+  while (boxes.length < 16) boxes.push([[128, 128, 128]]);
+  return boxes.slice(0, 16).map(box => {
+    let r = 0, g = 0, b = 0;
+    for (const c of box) { r += c[0]; g += c[1]; b += c[2]; }
+    const n = box.length || 1;
+    return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+  });
+}
 
 /* 8×8 Bayer matrix (0–63) */
 const BAYER_8X8 = [
@@ -505,12 +577,23 @@ const BAYER_8X8 = [
    STATE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-let blockSize = 16;
+let blockSize = 6;
 let ditherEnabled = false;
 let ghostEnabled = false;
 let outlineEnabled = false;
-let currentPalette = 'frutigeraero';
+let currentPalette = 'original';
 let originalImageData = null;
+let cachedOriginalPalette = null;
+
+let dialogEnabled = false;
+let dialogStyle = 'jrpg';
+let dialogName = '';
+let dialogText = '';
+let dialogPosition = 85;
+let dialogBoxSize = 45;
+let dialogRepaintTimeout = null;
+let borderEnabled = false;
+let borderStyle = 'blackwhite';
 let srcWidth = 0;
 let srcHeight = 0;
 
@@ -525,15 +608,27 @@ const status = document.getElementById('status');
 const placeholder = document.getElementById('placeholder');
 const paletteScroll = document.getElementById('paletteScroll');
 
+function getPaletteForDisplay(key) {
+  if (key === 'original') {
+    return cachedOriginalPalette || Array.from({ length: 16 }, (_, i) => {
+      const v = Math.round((i / 15) * 255);
+      return [v, v, v];
+    });
+  }
+  return PALETTES[key];
+}
+
 function buildPaletteGrid() {
   paletteScroll.innerHTML = '';
-  for (const key of Object.keys(PALETTES)) {
+  for (const key of PALETTE_ORDER) {
+    const palette = getPaletteForDisplay(key);
+    if (!palette) continue;
     const btn = document.createElement('button');
     btn.className = 'toggle-btn palette-btn' + (key === currentPalette ? ' pressed' : '');
     btn.dataset.palette = key;
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
-    swatch.innerHTML = PALETTES[key].slice(0, 16).map(([r,g,b]) =>
+    swatch.innerHTML = palette.slice(0, 16).map(([r,g,b]) =>
       `<span style="background:rgb(${r},${g},${b})"></span>`
     ).join('');
     const name = document.createElement('span');
@@ -589,6 +684,7 @@ function loadFile(file) {
       placeholder.style.display = 'none';
       status.textContent = `Loaded: ${file.name}  (${srcWidth} × ${srcHeight})`;
       processAndPaint();
+      buildPaletteGrid();
     };
     img.src = e.target.result;
   };
@@ -647,6 +743,77 @@ document.querySelectorAll('[data-fx]').forEach(btn => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   BORDER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const canvasFrame = document.getElementById('canvasFrame');
+
+function applyBorderStyles() {
+  canvasFrame.classList.remove('border-blackwhite', 'border-navy');
+  if (borderEnabled) canvasFrame.classList.add('border-' + borderStyle);
+}
+
+document.getElementById('borderToggle').addEventListener('click', function() {
+  borderEnabled = !borderEnabled;
+  this.textContent = borderEnabled ? 'ON' : 'OFF';
+  this.classList.toggle('pressed', borderEnabled);
+  applyBorderStyles();
+});
+
+document.querySelectorAll('.border-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.border-btn').forEach(b => b.classList.remove('pressed'));
+    btn.classList.add('pressed');
+    borderStyle = btn.dataset.border;
+    applyBorderStyles();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIALOG PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function scheduleDialogRepaint() {
+  if (dialogRepaintTimeout) clearTimeout(dialogRepaintTimeout);
+  dialogRepaintTimeout = setTimeout(processAndPaint, 50);
+}
+
+document.getElementById('dialogToggle').addEventListener('click', function() {
+  dialogEnabled = !dialogEnabled;
+  this.textContent = dialogEnabled ? 'ON' : 'OFF';
+  this.dataset.on = dialogEnabled ? 'ON' : 'OFF';
+  this.classList.toggle('pressed', dialogEnabled);
+  processAndPaint();
+});
+
+document.querySelectorAll('.dialog-style-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.dialog-style-btn').forEach(b => b.classList.remove('pressed'));
+    btn.classList.add('pressed');
+    dialogStyle = btn.dataset.style;
+    processAndPaint();
+  });
+});
+
+document.getElementById('dialogName').addEventListener('input', function() {
+  dialogName = this.value.trim();
+  scheduleDialogRepaint();
+});
+document.getElementById('dialogText').addEventListener('input', function() {
+  dialogText = this.value.trim();
+  scheduleDialogRepaint();
+});
+
+document.getElementById('dialogPosition').addEventListener('input', function() {
+  dialogPosition = parseInt(this.value, 10);
+  processAndPaint();
+});
+document.getElementById('dialogBoxSize').addEventListener('input', function() {
+  dialogBoxSize = parseInt(this.value, 10);
+  processAndPaint();
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PROCESSING PIPELINE (unchanged — Redmean, block downsampling, Bayer dither)
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -656,7 +823,9 @@ function processAndPaint() {
 
   const w = srcWidth;
   const h = srcHeight;
-  const palette = PALETTES[currentPalette];
+  const palette = currentPalette === 'original'
+    ? (cachedOriginalPalette = extractOriginalPalette(originalImageData.data, w, h))
+    : PALETTES[currentPalette];
 
   let result = applyPaletteBayer(
     downsampleBlocks(originalImageData.data, w, h, blockSize),
@@ -671,8 +840,135 @@ function processAndPaint() {
   outData.data.set(result);
   ctx.putImageData(outData, 0, 0);
 
+  if (dialogEnabled) {
+    drawDialogOverlay(ctx, w, h);
+  }
+
+  if (borderEnabled) {
+    drawCanvasBorder(ctx, w, h);
+  }
+
   const ms = (performance.now() - t0).toFixed(1);
   status.textContent = `Processed in ${ms} ms  |  Block: ${blockSize}px  |  Dither: ${ditherEnabled ? 'ON' : 'OFF'}  |  Ghost: ${ghostEnabled ? 'ON' : 'OFF'}  |  Outline: ${outlineEnabled ? 'ON' : 'OFF'}  |  Palette: ${PALETTE_NAMES[currentPalette]}  |  ${w} × ${h}`;
+  if (currentPalette === 'original') buildPaletteGrid();
+}
+
+function drawDialogOverlay(ctx, w, h) {
+  // Box size 10–100 scales both width and height smoothly
+  const sizeVal = Math.max(10, Math.min(100, dialogBoxSize));
+  const scale = (sizeVal - 10) / 90; // 0 at 10, 1 at 100
+  const boxW = Math.max(120, Math.round(w * (0.30 + 0.65 * scale)));
+  const boxH = Math.max(60, Math.round(h * (0.10 + 0.40 * scale)));
+  const fontSz = Math.max(20, Math.min(36, Math.floor(Math.min(boxW, boxH) / 6)));
+  const pad = Math.max(8, Math.round(Math.min(boxW, boxH) / 10));
+  const boxX = (w - boxW) / 2;
+  const posPct = Math.max(0, Math.min(100, dialogPosition)) / 100;
+  const boxY = Math.round((h - boxH - pad) * (1 - posPct)) + pad;
+
+  ctx.save();
+  ctx.font = `${fontSz}px "MS Sans Serif", "Microsoft Sans Serif", "Segoe UI", Tahoma, sans-serif`;
+
+  const displayName = dialogName.replace(/[:\s]+$/, '').trim();
+  const displayText = dialogText.replace(/^\s*>\s*/, '');
+  const lineH = fontSz + 6;
+  const nameGap = (displayName && displayText) ? Math.round(lineH * 0.3) : 0;
+
+  // Count lines for vertical centering
+  let numLines = 0;
+  if (displayName) numLines++;
+  if (displayText) numLines++;
+  const totalH = numLines * lineH + nameGap;
+  const startY = boxY + (boxH - totalH) / 2 + fontSz;
+  const textX = boxX + pad;
+
+  if (dialogStyle === 'jrpg') {
+    ctx.fillStyle = '#000080';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+    let curY = startY;
+    if (displayName) {
+      ctx.fillStyle = '#ffff00';
+      ctx.fillText(displayName, textX, curY);
+      curY += lineH + nameGap;
+    }
+    ctx.fillStyle = '#ffffff';
+    if (displayText) ctx.fillText(displayText, textX, curY);
+
+  } else if (dialogStyle === 'classic') {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    let curY = startY;
+    if (displayName) {
+      ctx.fillStyle = '#ffff00';
+      ctx.fillText(displayName, textX, curY);
+      curY += lineH + nameGap;
+    }
+    ctx.fillStyle = '#ffffff';
+    if (displayText) ctx.fillText(displayText, textX, curY);
+
+  } else if (dialogStyle === 'ghost') {
+    let curY = startY;
+    if (displayName) {
+      drawOutlinedText(ctx, displayName, textX, curY, '#ffff00', '#000000', 2);
+      curY += lineH + nameGap;
+    }
+    if (displayText) drawOutlinedText(ctx, displayText, textX, curY, '#ffffff', '#000000', 2);
+
+  } else {
+    // Modern
+    ctx.fillStyle = 'rgba(42,42,42,0.85)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX + 1, boxY + 1, boxW - 2, boxH - 2);
+    let curY = startY;
+    if (displayName) {
+      ctx.fillStyle = '#aaccff';
+      ctx.fillText(displayName, textX, curY);
+      curY += lineH + nameGap;
+    }
+    ctx.fillStyle = '#ffffff';
+    if (displayText) ctx.fillText(displayText, textX, curY);
+  }
+
+  ctx.restore();
+}
+
+function drawOutlinedText(ctx, str, x, y, fillColor, outlineColor, thickness) {
+  ctx.fillStyle = outlineColor;
+  for (let dx = -thickness; dx <= thickness; dx++) {
+    for (let dy = -thickness; dy <= thickness; dy++) {
+      if (dx !== 0 || dy !== 0) ctx.fillText(str, x + dx, y + dy);
+    }
+  }
+  ctx.fillStyle = fillColor;
+  ctx.fillText(str, x, y);
+}
+
+function drawCanvasBorder(ctx, w, h) {
+  ctx.save();
+  if (borderStyle === 'blackwhite') {
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(0, 0, w, h);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+  } else if (borderStyle === 'navy') {
+    ctx.strokeStyle = '#000080';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(0, 0, w, h);
+    ctx.strokeStyle = '#4169e1';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+  }
+  ctx.restore();
 }
 
 function downsampleBlocks(src, w, h, blockSize) {

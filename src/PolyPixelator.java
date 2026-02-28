@@ -148,14 +148,16 @@ public class PolyPixelator extends JFrame {
 
     // Dialog overlay state
     private volatile boolean dialogEnabled = false;
-    private volatile boolean dialogStyleJRPG = true; // true = JRPG Box, false = Terminal
+    private volatile int dialogStyle = 0; // 0=JRPG Blue, 1=JRPG Black, 2=Classic, 3=Modern, 4=Terminal, 5=Ghost
     private volatile int dialogVerticalPos = 80;
+    private volatile int dialogBoxHeight = 20; // % of image height, 10-50
+    private volatile int dialogBoxWidthPct = 90; // % of usable width; lower = narrower box
     private JTextField dialogNameField;
     private JTextArea dialogTextArea;
     private javax.swing.Timer dialogDebounceTimer;
 
-    // Border option (Sora-style)
-    private volatile boolean borderEnabled = false;
+    // Border option: 0=off, 1=black/white, 2=navy
+    private volatile int borderMode = 0;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // UI BUILD (Windows 95/98)
@@ -183,8 +185,7 @@ public class PolyPixelator extends JFrame {
         rightSidebar.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.GRAY));
         JPanel rightContent = new JPanel(new BorderLayout(0, 4));
         rightContent.setOpaque(false);
-        rightContent.add(createTitledSection("Background colours", createBackgroundOptions()), BorderLayout.NORTH);
-        rightContent.add(createTitledSection("DIALOG", createDialogPanel()), BorderLayout.CENTER);
+        rightContent.add(createTitledSection("Background colours", createBackgroundOptions()), BorderLayout.CENTER);
         rightSidebar.add(rightContent, BorderLayout.CENTER);
         centerWrap.add(rightSidebar, BorderLayout.EAST);
 
@@ -238,16 +239,35 @@ public class PolyPixelator extends JFrame {
             outlineEnabled = outlineBtn.isSelected();
             scheduleProcess();
         });
-        JToggleButton borderBtn = createWinToggleButton("Border");
-        borderBtn.addActionListener(e -> {
-            borderEnabled = borderBtn.isSelected();
-            scheduleProcess();
-        });
         fxContent.add(ditherBtn);
         fxContent.add(ghostBtn);
         fxContent.add(outlineBtn);
-        fxContent.add(borderBtn);
         bottomDock.add(createTitledSection("FX", fxContent));
+
+        addDockSeparator(bottomDock);
+
+        // Border — OFF, Black/White, Navy
+        JPanel borderContent = createGrayPanel();
+        ButtonGroup borderGroup = new ButtonGroup();
+        JToggleButton borderOffBtn = createWinToggleButton("OFF");
+        borderOffBtn.setSelected(true);
+        borderOffBtn.addActionListener(e -> { borderMode = 0; scheduleProcess(); });
+        JToggleButton borderBWBtn = createWinToggleButton("Black/White");
+        borderBWBtn.addActionListener(e -> { borderMode = 1; scheduleProcess(); });
+        JToggleButton borderNavyBtn = createWinToggleButton("Navy");
+        borderNavyBtn.addActionListener(e -> { borderMode = 2; scheduleProcess(); });
+        borderGroup.add(borderOffBtn);
+        borderGroup.add(borderBWBtn);
+        borderGroup.add(borderNavyBtn);
+        borderContent.add(borderOffBtn);
+        borderContent.add(borderBWBtn);
+        borderContent.add(borderNavyBtn);
+        bottomDock.add(createTitledSection("Border", borderContent));
+
+        addDockSeparator(bottomDock);
+
+        // Dialog — ON/OFF, style, height slider, name & text
+        bottomDock.add(createTitledSection("Dialog", createDialogPanelBottom()));
 
         addDockSeparator(bottomDock);
 
@@ -353,15 +373,8 @@ public class PolyPixelator extends JFrame {
         return content;
     }
 
-    private JPanel createDialogPanel() {
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(WIN_GRAY);
-        content.setOpaque(true);
-        content.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createBevelBorder(BevelBorder.LOWERED),
-            BorderFactory.createEmptyBorder(6, 6, 6, 6)
-        ));
+    private JPanel createDialogPanelBottom() {
+        JPanel content = createGrayPanel();
 
         DocumentListener docListener = new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { scheduleDialogRedraw(); }
@@ -377,64 +390,108 @@ public class PolyPixelator extends JFrame {
             dialogEnabled = onOffCheck.isSelected();
             scheduleProcess();
         });
+        content.add(onOffCheck);
 
         ButtonGroup styleGroup = new ButtonGroup();
-        JToggleButton jrpgBtn = createWinToggleButton("JRPG Box");
-        jrpgBtn.setSelected(true);
-        jrpgBtn.addActionListener(e -> { dialogStyleJRPG = true; scheduleProcess(); });
+        JToggleButton jrpgBlueBtn = createWinToggleButton("JRPG Blue");
+        jrpgBlueBtn.setSelected(true);
+        jrpgBlueBtn.addActionListener(e -> { dialogStyle = 0; scheduleProcess(); });
+        JToggleButton jrpgBlackBtn = createWinToggleButton("JRPG Black");
+        jrpgBlackBtn.addActionListener(e -> { dialogStyle = 1; scheduleProcess(); });
+        JToggleButton classicBtn = createWinToggleButton("Classic");
+        classicBtn.addActionListener(e -> { dialogStyle = 2; scheduleProcess(); });
+        JToggleButton modernBtn = createWinToggleButton("Modern");
+        modernBtn.addActionListener(e -> { dialogStyle = 3; scheduleProcess(); });
         JToggleButton termBtn = createWinToggleButton("Terminal");
-        termBtn.addActionListener(e -> { dialogStyleJRPG = false; scheduleProcess(); });
-        styleGroup.add(jrpgBtn);
+        termBtn.addActionListener(e -> { dialogStyle = 4; scheduleProcess(); });
+        JToggleButton ghostDlgBtn = createWinToggleButton("Ghost");
+        ghostDlgBtn.addActionListener(e -> { dialogStyle = 5; scheduleProcess(); });
+        styleGroup.add(jrpgBlueBtn);
+        styleGroup.add(jrpgBlackBtn);
+        styleGroup.add(classicBtn);
+        styleGroup.add(modernBtn);
         styleGroup.add(termBtn);
+        styleGroup.add(ghostDlgBtn);
+        content.add(jrpgBlueBtn);
+        content.add(jrpgBlackBtn);
+        content.add(classicBtn);
+        content.add(modernBtn);
+        content.add(termBtn);
+        content.add(ghostDlgBtn);
 
-        JLabel nameLbl = new JLabel("Name (optional)");
+        JLabel heightLbl = new JLabel("Box height:");
+        heightLbl.setFont(WIN_FONT);
+        heightLbl.setToolTipText("Dialogue box height as % of image (10% = small, 50% = large)");
+        content.add(heightLbl);
+        JSlider heightSlider = new JSlider(10, 50, 20);
+        heightSlider.setPreferredSize(new Dimension(100, 28));
+        JLabel heightValLbl = new JLabel("20%");
+        heightValLbl.setFont(WIN_FONT);
+        heightValLbl.setMinimumSize(new Dimension(28, 20));
+        heightSlider.addChangeListener(e -> {
+            int v = heightSlider.getValue();
+            dialogBoxHeight = v;
+            heightValLbl.setText(v + "%");
+            scheduleProcess();
+        });
+        content.add(heightSlider);
+        content.add(heightValLbl);
+
+        JLabel widthLbl = new JLabel("Box width:");
+        widthLbl.setFont(WIN_FONT);
+        widthLbl.setToolTipText("Dialogue box width % — lower = narrower (more control for small boxes)");
+        content.add(widthLbl);
+        JSlider widthSlider = new JSlider(25, 100, 90);
+        widthSlider.setPreferredSize(new Dimension(100, 28));
+        JLabel widthValLbl = new JLabel("90%");
+        widthValLbl.setFont(WIN_FONT);
+        widthValLbl.setMinimumSize(new Dimension(28, 20));
+        widthSlider.addChangeListener(e -> {
+            int v = widthSlider.getValue();
+            dialogBoxWidthPct = v;
+            widthValLbl.setText(v + "%");
+            scheduleProcess();
+        });
+        content.add(widthSlider);
+        content.add(widthValLbl);
+
+        JLabel posLbl = new JLabel("Position:");
+        posLbl.setFont(WIN_FONT);
+        posLbl.setToolTipText("0% = top, 100% = bottom");
+        content.add(posLbl);
+        JSlider posSlider = new JSlider(0, 100, 80);
+        posSlider.setPreferredSize(new Dimension(100, 28));
+        JLabel posValLbl = new JLabel("80%");
+        posValLbl.setFont(WIN_FONT);
+        posValLbl.setMinimumSize(new Dimension(28, 20));
+        posSlider.addChangeListener(e -> {
+            int v = posSlider.getValue();
+            dialogVerticalPos = v;
+            posValLbl.setText(v + "%");
+            scheduleProcess();
+        });
+        content.add(posSlider);
+        content.add(posValLbl);
+
+        JLabel nameLbl = new JLabel("Name:");
         nameLbl.setFont(WIN_FONT);
-        dialogNameField = new JTextField(14);
+        content.add(nameLbl);
+        dialogNameField = new JTextField(10);
         dialogNameField.setFont(WIN_FONT);
-        dialogNameField.setMaximumSize(new Dimension(200, 24));
         dialogNameField.getDocument().addDocumentListener(docListener);
+        content.add(dialogNameField);
 
-        JLabel textLbl = new JLabel("Text");
+        JLabel textLbl = new JLabel("Text:");
         textLbl.setFont(WIN_FONT);
-        dialogTextArea = new JTextArea(3, 14);
+        content.add(textLbl);
+        dialogTextArea = new JTextArea(2, 18);
         dialogTextArea.setFont(WIN_FONT);
         dialogTextArea.setLineWrap(true);
         dialogTextArea.setWrapStyleWord(true);
         dialogTextArea.getDocument().addDocumentListener(docListener);
-
-        JLabel vertLbl = new JLabel("Vertical Position");
-        vertLbl.setFont(WIN_FONT);
-        JSlider vertSlider = new JSlider(0, 100, 80);
-        vertSlider.setPreferredSize(new Dimension(180, 28));
-        vertSlider.addChangeListener(e -> {
-            dialogVerticalPos = vertSlider.getValue();
-            scheduleProcess();
-        });
-
-        onOffCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
-        jrpgBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        termBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        nameLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        dialogNameField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        textLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        vertLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        vertSlider.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        content.add(onOffCheck);
-        content.add(Box.createVerticalStrut(6));
-        content.add(jrpgBtn);
-        content.add(termBtn);
-        content.add(Box.createVerticalStrut(6));
-        content.add(nameLbl);
-        content.add(dialogNameField);
-        content.add(Box.createVerticalStrut(4));
-        content.add(textLbl);
         JScrollPane textScroll = new JScrollPane(dialogTextArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        textScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        textScroll.setPreferredSize(new Dimension(140, 36));
         content.add(textScroll);
-        content.add(Box.createVerticalStrut(4));
-        content.add(vertLbl);
-        content.add(vertSlider);
 
         return content;
     }
@@ -513,7 +570,7 @@ public class PolyPixelator extends JFrame {
                     String nm = dialogNameField.getText();
                     String tx = dialogTextArea.getText();
                     if (!nm.isEmpty() || !tx.isEmpty()) {
-                        toSave = applyDialogToImage(processedImage, nm, tx, dialogStyleJRPG, dialogVerticalPos);
+                        toSave = applyDialogToImage(processedImage, nm, tx, dialogStyle, dialogVerticalPos, dialogBoxHeight, dialogBoxWidthPct);
                     }
                 }
                 ImageIO.write(toSave, "png", fc.getSelectedFile());
@@ -524,72 +581,133 @@ public class PolyPixelator extends JFrame {
         }
     }
 
-    private BufferedImage applyDialogToImage(BufferedImage src, String name, String text, boolean styleJRPG, int verticalPos) {
+    private BufferedImage applyDialogToImage(BufferedImage src, String name, String text, int style, int verticalPos, int boxHeightPct, int boxWidthPct) {
         if (name == null) name = "";
         if (text == null) text = "";
         if (name.isEmpty() && text.isEmpty()) return src;
         BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g2 = out.createGraphics();
         g2.drawImage(src, 0, 0, null);
-        drawDialogOntoGraphics(g2, src.getWidth(), src.getHeight(), name, text, styleJRPG, verticalPos);
+        drawDialogOntoGraphics(g2, src.getWidth(), src.getHeight(), name, text, style, verticalPos, boxHeightPct, boxWidthPct);
         g2.dispose();
         return out;
     }
 
-    private void drawDialogOntoGraphics(Graphics2D g2, int imgW, int imgH, String name, String text, boolean styleJRPG, int verticalPos) {
-        int margin = 20;
+    private void drawDialogOntoGraphics(Graphics2D g2, int imgW, int imgH, String name, String text, int style, int verticalPos, int boxHeightPct, int boxWidthPct) {
+        int baseMargin = Math.max(40, (int)(imgW * 0.05));
+        int usableW = imgW - 2 * baseMargin;
+        int boxW = Math.max(80, (int)(usableW * boxWidthPct / 100.0));
+        int boxX = baseMargin + (usableW - boxW) / 2;
         int boxY = (int) (imgH * (verticalPos / 100.0));
-        int boxW = imgW - 2 * margin;
         int lineH = Math.max(14, imgH / 25);
         int padding = lineH / 2;
-        int boxH = padding * 2 + lineH * 3;
+        int boxH = Math.max(lineH * 2 + padding * 2, (int) (imgH * boxHeightPct / 100.0));
         boxY = Math.max(0, Math.min(boxY, imgH - boxH - padding));
-        int boxX = margin;
 
-        if (styleJRPG) {
-            g2.setColor(Color.BLACK);
+        // Name: strip trailing colon/whitespace for all styles
+        String displayName = name.replaceFirst("[:\\s]+$", "").trim();
+        // Text: strip leading "> " markers
+        String displayText = text.replaceFirst("^\\s*>\\s*", "");
+
+        int fontSize = Math.max(10, Math.min(24, imgH / 20));
+        Font textFont = (style == 4)
+            ? new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(10, Math.min(20, imgH / 25)))
+            : new Font(Font.MONOSPACED, Font.PLAIN, fontSize);
+        g2.setFont(textFont);
+        FontMetrics fm = g2.getFontMetrics();
+
+        // Count content lines for vertical centering
+        String[] textLines = displayText.split("\n");
+        int numLines = 0;
+        if (!displayName.isEmpty()) numLines++;
+        for (String line : textLines) {
+            String trimmed = line.replaceFirst("^\\s*>\\s*", "");
+            if (!trimmed.isEmpty()) numLines++;
+        }
+        if (numLines == 0 && !displayText.isEmpty()) numLines = 1;
+        int nameGap = (!displayName.isEmpty() && numLines > 1) ? lineH / 3 : 0;
+        int totalContentH = numLines * lineH + nameGap;
+        int startY = boxY + (boxH - totalContentH) / 2 + fm.getAscent();
+        int textX = boxX + padding + 3;
+
+        if (style == 0 || style == 1 || style == 2 || style == 3) {
+            // Filled box styles: JRPG Blue(0), JRPG Black(1), Classic(2), Modern(3)
+            Color fillColor;
+            if (style == 1 || style == 2) fillColor = Color.BLACK;
+            else if (style == 3) fillColor = new Color(0x2a, 0x2a, 0x2a);
+            else fillColor = new Color(0x00, 0x20, 0x60);
+            g2.setColor(fillColor);
             g2.fillRect(boxX, boxY, boxW, boxH);
             g2.setColor(Color.WHITE);
             g2.setStroke(new BasicStroke(3));
             g2.drawRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
             g2.setStroke(new BasicStroke(1));
-            int fontSize = Math.max(10, Math.min(24, imgH / 20));
-            g2.setFont(new Font(Font.MONOSPACED, Font.PLAIN, fontSize));
-            FontMetrics fm = g2.getFontMetrics();
-            int textX = boxX + padding + 3;
-            int textY = boxY + padding + fm.getAscent();
-            if (!name.isEmpty()) {
-                g2.setColor(Color.YELLOW);
-                g2.drawString(name, textX, textY);
-                textY += lineH;
+            g2.setFont(textFont);
+
+            int curY = startY;
+            if (!displayName.isEmpty()) {
+                Color nameColor = (style == 3) ? new Color(0xaa, 0xcc, 0xff) : Color.YELLOW;
+                g2.setColor(nameColor);
+                g2.drawString(displayName, textX, curY);
+                curY += lineH + nameGap;
             }
             g2.setColor(Color.WHITE);
-            for (String line : text.split("\n")) {
-                if (textY > boxY + boxH - padding) break;
-                g2.drawString(line, textX, textY);
-                textY += lineH;
+            for (String line : textLines) {
+                String trimmed = line.replaceFirst("^\\s*>\\s*", "");
+                if (curY > boxY + boxH - padding) break;
+                g2.drawString(trimmed, textX, curY);
+                curY += lineH;
             }
-        } else {
+
+        } else if (style == 4) {
+            // Terminal: semi-transparent black box, green text
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f));
             g2.setColor(Color.BLACK);
             g2.fillRect(boxX, boxY, boxW, boxH);
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
-            int fontSize = Math.max(10, Math.min(20, imgH / 25));
-            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, fontSize));
+            g2.setFont(textFont);
             g2.setColor(new Color(0x00, 0xFF, 0x00));
-            FontMetrics fm = g2.getFontMetrics();
-            int textX = boxX + padding;
-            int textY = boxY + padding + fm.getAscent();
-            if (!name.isEmpty()) {
-                g2.drawString(name, textX, textY);
-                textY += lineH;
+
+            int curY = startY;
+            if (!displayName.isEmpty()) {
+                g2.drawString(displayName, textX, curY);
+                curY += lineH + nameGap;
             }
-            for (String line : text.split("\n")) {
-                if (textY > boxY + boxH - padding) break;
-                g2.drawString(line, textX, textY);
-                textY += lineH;
+            for (String line : textLines) {
+                String trimmed = line.replaceFirst("^\\s*>\\s*", "");
+                if (curY > boxY + boxH - padding) break;
+                g2.drawString(trimmed, textX, curY);
+                curY += lineH;
+            }
+
+        } else if (style == 5) {
+            // Ghost: no background, white text with thick black outline for readability
+            g2.setFont(textFont);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            int curY = startY;
+            if (!displayName.isEmpty()) {
+                drawOutlinedString(g2, displayName, textX, curY, Color.YELLOW, Color.BLACK, 2);
+                curY += lineH + nameGap;
+            }
+            for (String line : textLines) {
+                String trimmed = line.replaceFirst("^\\s*>\\s*", "");
+                if (curY > boxY + boxH - padding) break;
+                drawOutlinedString(g2, trimmed, textX, curY, Color.WHITE, Color.BLACK, 2);
+                curY += lineH;
             }
         }
+    }
+
+    private void drawOutlinedString(Graphics2D g2, String str, int x, int y, Color fill, Color outline, int thickness) {
+        g2.setColor(outline);
+        for (int dx = -thickness; dx <= thickness; dx++) {
+            for (int dy = -thickness; dy <= thickness; dy++) {
+                if (dx != 0 || dy != 0) g2.drawString(str, x + dx, y + dy);
+            }
+        }
+        g2.setColor(fill);
+        g2.drawString(str, x, y);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -604,11 +722,13 @@ public class PolyPixelator extends JFrame {
         final boolean dither = ditherEnabled;
         final boolean ghost = ghostEnabled;
         final boolean outline = outlineEnabled;
-        final boolean border = borderEnabled;
+        final int brdMode = borderMode;
         final int palIdx = paletteIndex;
         final boolean dlgOn = dialogEnabled;
-        final boolean dlgJRPG = dialogStyleJRPG;
+        final int dlgStyle = dialogStyle;
         final int dlgVert = dialogVerticalPos;
+        final int dlgBoxH = dialogBoxHeight;
+        final int dlgBoxW = dialogBoxWidthPct;
         final String dlgName = dialogNameField != null ? dialogNameField.getText() : "";
         final String dlgText = dialogTextArea != null ? dialogTextArea.getText() : "";
 
@@ -620,12 +740,13 @@ public class PolyPixelator extends JFrame {
                 BufferedImage result = applyPaletteWithDither(downsampled, PALETTES[palIdx], dither);
                 if (outline) result = applyOutline(result, block, PALETTES[palIdx]);
                 if (ghost) result = applyGhost(result, 10, 10, 0.3f);
-                if (border) result = applyBorder(result);
+                if (brdMode > 0) result = applyBorder(result, brdMode);
                 if (dlgOn && (!dlgName.isEmpty() || !dlgText.isEmpty())) {
-                    result = applyDialogToImage(result, dlgName, dlgText, dlgJRPG, dlgVert);
+                    result = applyDialogToImage(result, dlgName, dlgText, dlgStyle, dlgVert, dlgBoxH, dlgBoxW);
                 }
                 long ms = (System.nanoTime() - t0) / 1_000_000;
-                final String msg = " Processed in " + ms + " ms  |  Block: " + block + "px  |  Dither: " + (dither ? "ON" : "OFF") + "  |  Ghost: " + (ghost ? "ON" : "OFF") + "  |  Outline: " + (outline ? "ON" : "OFF") + "  |  Border: " + (border ? "ON" : "OFF") + "  |  Palette: " + PALETTE_NAMES[palIdx];
+                String[] brdNames = {"OFF", "B/W", "Navy"};
+                final String msg = " Processed in " + ms + " ms  |  Block: " + block + "px  |  Dither: " + (dither ? "ON" : "OFF") + "  |  Ghost: " + (ghost ? "ON" : "OFF") + "  |  Outline: " + (outline ? "ON" : "OFF") + "  |  Border: " + brdNames[brdMode] + "  |  Palette: " + PALETTE_NAMES[palIdx];
                 SwingUtilities.invokeLater(() -> statusLabel.setText(msg));
                 return result;
             }
@@ -805,14 +926,15 @@ public class PolyPixelator extends JFrame {
         return out;
     }
 
-    /** Add 2px border around image (Sora's Pixel Converter style). */
-    private BufferedImage applyBorder(BufferedImage src) {
+    /** Add 2px border around image. mode: 1=black/white, 2=navy. */
+    private BufferedImage applyBorder(BufferedImage src, int mode) {
         int w = src.getWidth();
         int h = src.getHeight();
         int bw = 2;
+        Color borderColor = (mode == 2) ? NAVY : Color.BLACK;
         BufferedImage out = new BufferedImage(w + 2 * bw, h + 2 * bw, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2 = out.createGraphics();
-        g2.setColor(Color.BLACK);
+        g2.setColor(borderColor);
         g2.fillRect(0, 0, out.getWidth(), out.getHeight());
         g2.drawImage(src, bw, bw, null);
         g2.dispose();
