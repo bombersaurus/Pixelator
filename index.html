@@ -374,55 +374,55 @@
 
   /* ── Mobile responsive ───────────────────────────────────────────────────── */
   @media (max-width: 768px) {
-    .main-row { flex-direction: column; }
-    .right-sidebar {
-      width: 100%;
-      min-width: 0;
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: center;
-      border-left: none;
-      border-top: 1px solid var(--win-shadow);
+    body { overflow-y: auto; }
+    .main-row { flex-direction: column; flex: none; }
+    .right-sidebar { display: none; }
+    .canvas-area {
+      flex: none;
+      height: 44vh;
+      height: 44dvh;
+      min-height: 200px;
+      padding: 4px;
     }
-    .bg-section .section-content { flex-direction: row; }
-    .preview-window { width: 98%; height: 50vh; max-width: 98%; max-height: 50vh; }
+    .preview-window {
+      width: 100%; height: 100%;
+      max-width: 100%; max-height: 100%;
+      min-width: 0; min-height: 0;
+    }
     .bottom-dock {
+      flex: none;
       flex-direction: column;
-      max-height: 45vh;
+      gap: 2px;
+      padding: 6px;
+      margin-bottom: 0;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      padding: 8px;
     }
     .dock-section {
       flex-wrap: wrap;
-      border-right: none;
-      border-bottom: 1px solid var(--win-shadow);
-      padding-right: 0;
-      padding-bottom: 6px;
-      margin-bottom: 4px;
+      border-right: none !important;
+      padding-right: 0 !important;
     }
-    .dock-section:last-child { border-bottom: none; }
-    .titled-section .section-content { flex-wrap: wrap; }
+    .titled-section { width: 100%; }
+    .titled-section .section-content { flex-wrap: wrap; gap: 6px; padding: 6px; }
     .win-btn, .toggle-btn {
-      min-height: 44px;
-      min-width: 44px;
-      padding: 8px 14px;
-      font-size: 12px;
+      min-height: 40px;
+      min-width: 40px;
+      padding: 10px 14px;
+      font-size: 13px;
     }
-    .dialog-style-btn { min-height: 40px; padding: 6px 10px; font-size: 11px; }
-    .dialog-input { width: 100px; min-width: 80px; font-size: 14px; padding: 8px; }
-    .dialog-slider { width: 100px; min-width: 80px; height: 28px; }
-    .palette-scroll { max-width: 100%; }
-  }
-
-  @media (max-width: 480px) {
-    body { font-size: 12px; }
-    .preview-window { min-width: 0; min-height: 180px; }
-    .bottom-dock { max-height: 40vh; gap: 6px; }
-    .dialog-panel .section-content { flex-direction: column; align-items: stretch; }
+    .dialog-styles { flex-wrap: wrap; gap: 4px; }
+    .dialog-style-btn { min-height: 36px; padding: 8px 10px; font-size: 12px; }
     .dialog-input-row, .dialog-slider-row { width: 100%; }
-    .dialog-input { flex: 1; max-width: 140px; }
-    .palette-btn { min-width: 52px; }
+    .dialog-input-row label, .dialog-slider-row label { font-size: 12px; width: 50px; }
+    .dialog-input { flex: 1; font-size: 16px; padding: 8px; width: auto; min-width: 0; }
+    .dialog-slider { flex: 1; height: 32px; width: auto; min-width: 0; }
+    .palette-scroll { max-width: 100%; overflow-x: auto; }
+    .palette-btn { min-width: 60px; padding: 4px 8px; }
+    .palette-btn .swatch { grid-template-columns: repeat(4, 8px); }
+    .palette-btn .swatch span { width: 8px; height: 8px; }
+    .palette-btn span.name { font-size: 11px; }
+    .status-bar { font-size: 10px; padding: 4px 8px; }
   }
 </style>
 </head>
@@ -654,6 +654,16 @@ let borderStyle = 'blackwhite';
 let srcWidth = 0;
 let srcHeight = 0;
 
+let _rafPending = false;
+function scheduleProcess() {
+  if (_rafPending) return;
+  _rafPending = true;
+  requestAnimationFrame(() => {
+    _rafPending = false;
+    processAndPaint();
+  });
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    DOM & PALETTE GRID
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -697,7 +707,7 @@ function buildPaletteGrid() {
       document.querySelectorAll('.palette-btn').forEach(b => b.classList.remove('pressed'));
       btn.classList.add('pressed');
       currentPalette = key;
-      processAndPaint();
+      scheduleProcess();
     });
     paletteScroll.appendChild(btn);
   }
@@ -740,7 +750,7 @@ function loadFile(file) {
       originalImageData = tCtx.getImageData(0, 0, srcWidth, srcHeight);
       placeholder.style.display = 'none';
       status.textContent = `Loaded: ${file.name}  (${srcWidth} × ${srcHeight})`;
-      processAndPaint();
+      scheduleProcess();
       buildPaletteGrid();
     };
     img.src = e.target.result;
@@ -771,7 +781,7 @@ document.querySelectorAll('[data-size]').forEach(btn => {
     document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('pressed'));
     btn.classList.add('pressed');
     blockSize = parseInt(btn.dataset.size, 10);
-    processAndPaint();
+    scheduleProcess();
   });
 });
 
@@ -795,7 +805,7 @@ document.querySelectorAll('[data-fx]').forEach(btn => {
     if (fx === 'dither') ditherEnabled = btn.classList.contains('pressed');
     if (fx === 'ghost') ghostEnabled = btn.classList.contains('pressed');
     if (fx === 'outline') outlineEnabled = btn.classList.contains('pressed');
-    processAndPaint();
+    scheduleProcess();
   });
 });
 
@@ -832,7 +842,7 @@ document.querySelectorAll('.border-btn').forEach(btn => {
 
 function scheduleDialogRepaint() {
   if (dialogRepaintTimeout) clearTimeout(dialogRepaintTimeout);
-  dialogRepaintTimeout = setTimeout(processAndPaint, 50);
+  dialogRepaintTimeout = setTimeout(scheduleProcess, 80);
 }
 
 document.getElementById('dialogToggle').addEventListener('click', function() {
@@ -840,7 +850,7 @@ document.getElementById('dialogToggle').addEventListener('click', function() {
   this.textContent = dialogEnabled ? 'ON' : 'OFF';
   this.dataset.on = dialogEnabled ? 'ON' : 'OFF';
   this.classList.toggle('pressed', dialogEnabled);
-  processAndPaint();
+  scheduleProcess();
 });
 
 document.querySelectorAll('.dialog-style-btn').forEach(btn => {
@@ -848,7 +858,7 @@ document.querySelectorAll('.dialog-style-btn').forEach(btn => {
     document.querySelectorAll('.dialog-style-btn').forEach(b => b.classList.remove('pressed'));
     btn.classList.add('pressed');
     dialogStyle = btn.dataset.style;
-    processAndPaint();
+    scheduleProcess();
   });
 });
 
@@ -863,11 +873,11 @@ document.getElementById('dialogText').addEventListener('input', function() {
 
 document.getElementById('dialogPosition').addEventListener('input', function() {
   dialogPosition = parseInt(this.value, 10);
-  processAndPaint();
+  scheduleProcess();
 });
 document.getElementById('dialogBoxSize').addEventListener('input', function() {
   dialogBoxSize = parseInt(this.value, 10);
-  processAndPaint();
+  scheduleProcess();
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
