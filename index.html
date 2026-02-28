@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poly Pixelator — Sora's Pixel Converter</title>
+<style>
+  :root {
+    --win-bg: #C0C0C0;
+    --win-highlight: #ffffff;
+    --win-shadow: #808080;
+    --win-shadow-dark: #404040;
+    --win-title: #000080;
+    --check-light: #606060;
+    --check-dark: #404040;
+    --bg-green: #006044;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'MS Sans Serif', 'Microsoft Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+    font-size: 11px;
+    color: #000;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-green);
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: unset;
+  }
+
+  body.bg-checkered {
+    background-color: var(--check-light);
+    background-image:
+      linear-gradient(45deg, var(--check-dark) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--check-dark) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--check-dark) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--check-dark) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  }
+
+  .main-row {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* ── Canvas area ─────────────────────────────────────────────────────────── */
+  .canvas-area {
+    flex: 1;
+    padding: 8px;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    cursor: default;
+  }
+
+  /* ── Right sidebar: Background toggle ─────────────────────────────────────── */
+  .right-sidebar {
+    width: 140px;
+    min-width: 140px;
+    flex-shrink: 0;
+    padding: 8px;
+    border-left: 1px solid var(--win-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--win-bg);
+  }
+
+  .bg-section .title-bar {
+    margin-bottom: 0;
+  }
+
+  .bg-section .section-content {
+    flex-direction: column;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .bg-option {
+    width: 100%;
+    padding: 16px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    min-height: 48px;
+  }
+
+  /* Fixed window — Win95 style, sharp corners, 3D bevel */
+  .preview-window {
+    display: flex;
+    flex-direction: column;
+    min-width: 320px;
+    min-height: 240px;
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 180px);
+    border: 2px solid;
+    border-color: var(--win-highlight) var(--win-shadow-dark) var(--win-shadow-dark) var(--win-highlight);
+    background: var(--win-bg);
+  }
+
+  .preview-window .window-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--win-title);
+    color: #fff;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 2px 4px 2px 6px;
+    height: 18px;
+    min-height: 18px;
+  }
+
+  .preview-window .window-buttons {
+    display: flex;
+    gap: 2px;
+  }
+
+  .preview-window .window-btn {
+    width: 16px;
+    height: 14px;
+    padding: 0;
+    font-size: 9px;
+    line-height: 1;
+    font-family: inherit;
+    background: var(--win-bg);
+    color: #000;
+    border: 1px solid;
+    border-color: var(--win-highlight) var(--win-shadow-dark) var(--win-shadow-dark) var(--win-highlight);
+    cursor: pointer;
+  }
+
+  .preview-window .window-btn:hover {
+    background: #d4d0c8;
+  }
+
+  .preview-window .window-btn:active {
+    border-color: var(--win-shadow-dark) var(--win-highlight) var(--win-highlight) var(--win-shadow-dark);
+  }
+
+  /* Canvas frame — sunken/inset 3D */
+  .canvas-frame {
+    flex: 1;
+    padding: 4px;
+    margin: 2px;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-shadow-dark) var(--win-highlight) var(--win-highlight) var(--win-shadow-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    cursor: pointer;
+    min-height: 160px;
+  }
+
+  .canvas-frame:hover {
+    background: #c8c8c8;
+  }
+
+  .canvas-frame canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    background: #808080;
+  }
+
+  .placeholder {
+    color: #808080;
+    font-style: italic;
+    font-size: 11px;
+    text-align: center;
+    padding: 16px;
+  }
+
+  .placeholder strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #404040;
+  }
+
+  /* ── Bottom dock — Win95 grey panels ─────────────────────────────────────── */
+  .bottom-dock {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--win-bg);
+    border-top: 1px solid var(--win-shadow);
+    flex-wrap: wrap;
+  }
+
+  .dock-section {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dock-section:not(:last-child) {
+    padding-right: 8px;
+    margin-right: 0;
+    border-right: 1px solid var(--win-shadow);
+  }
+
+  .titled-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    border: 2px solid;
+    border-color: var(--win-highlight) var(--win-shadow) var(--win-shadow) var(--win-highlight);
+  }
+  .titled-section .section-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-shadow-dark) var(--win-highlight) var(--win-highlight) var(--win-shadow-dark);
+    margin: 2px;
+  }
+
+  .title-bar {
+    background: var(--win-title);
+    color: #fff;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 2px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .win-btn {
+    padding: 4px 12px;
+    font-family: inherit;
+    font-size: 11px;
+    color: #000;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-highlight) var(--win-shadow) var(--win-shadow) var(--win-highlight);
+    cursor: pointer;
+  }
+  .win-btn:hover {
+    background: #d4d0c8;
+  }
+  .win-btn:active {
+    border-color: var(--win-shadow) var(--win-highlight) var(--win-highlight) var(--win-shadow);
+  }
+
+  .toggle-btn {
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    color: #000;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-highlight) var(--win-shadow) var(--win-shadow) var(--win-highlight);
+    cursor: pointer;
+  }
+  .toggle-btn:hover {
+    background: #d4d0c8;
+  }
+  .toggle-btn.pressed {
+    border-color: var(--win-shadow) var(--win-highlight) var(--win-highlight) var(--win-shadow);
+    background: #a0a0a0;
+  }
+
+  /* Palette buttons */
+  .palette-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    min-width: 56px;
+  }
+  .palette-btn .swatch {
+    display: grid;
+    grid-template-columns: repeat(4, 6px);
+    gap: 1px;
+  }
+  .palette-btn .swatch span {
+    width: 6px;
+    height: 6px;
+    display: block;
+  }
+  .palette-btn span.name { font-size: 10px; }
+
+  .palette-scroll {
+    max-width: 400px;
+    max-height: 64px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    gap: 4px;
+    padding: 2px;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-shadow-dark) var(--win-highlight) var(--win-highlight) var(--win-shadow-dark);
+  }
+  .palette-scroll::-webkit-scrollbar { height: 16px; }
+  .palette-scroll::-webkit-scrollbar-track {
+    background: var(--win-bg);
+    border: 1px solid var(--win-shadow);
+  }
+  .palette-scroll::-webkit-scrollbar-thumb {
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-highlight) var(--win-shadow) var(--win-shadow) var(--win-highlight);
+  }
+
+  .status-bar {
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #000;
+    background: var(--win-bg);
+    border-top: 1px solid var(--win-shadow);
+  }
+
+  .drop-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 128, 128, 0.25);
+    border: 3px dashed var(--win-title);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-family: inherit;
+    color: #000;
+    pointer-events: none;
+  }
+  .drop-overlay.visible { display: flex; }
+</style>
+</head>
+<body id="body">
+
+<div class="main-row">
+<div class="canvas-area" id="canvasArea">
+  <div class="preview-window" id="previewWindow">
+    <div class="window-title-bar" id="windowTitleBar">
+      <span>pixalator</span>
+      <div class="window-buttons">
+        <button class="window-btn" title="Minimize">_</button>
+        <button class="window-btn" title="Maximize">□</button>
+        <button class="window-btn" title="Close">×</button>
+      </div>
+    </div>
+    <div class="canvas-frame" id="canvasFrame">
+      <canvas id="canvas" width="0" height="0"></canvas>
+      <div class="placeholder" id="placeholder">
+        <strong>Click or drop image here</strong>
+        Load an image to pixelate
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="right-sidebar">
+  <div class="dock-section titled-section bg-section">
+    <div class="title-bar">Background</div>
+    <div class="section-content">
+      <button class="toggle-btn bg-option pressed" data-bg="greenish">Greenish</button>
+      <button class="toggle-btn bg-option" data-bg="checkered">Checkered</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="bottom-dock">
+  <div class="dock-section">
+    <button class="win-btn" id="loadBtn">Load</button>
+    <button class="win-btn" id="saveBtn">Save PNG</button>
+  </div>
+
+  <div class="dock-section titled-section">
+    <div class="title-bar">Size</div>
+    <div class="section-content">
+      <button class="toggle-btn" data-size="4">4px</button>
+      <button class="toggle-btn" data-size="8">8px</button>
+      <button class="toggle-btn pressed" data-size="16">16px</button>
+      <button class="toggle-btn" data-size="32">32px</button>
+    </div>
+  </div>
+
+  <div class="dock-section titled-section">
+    <div class="title-bar">FX</div>
+    <div class="section-content">
+      <button class="toggle-btn" data-fx="dither">Dither</button>
+      <button class="toggle-btn" data-fx="ghost">Ghost</button>
+      <button class="toggle-btn" data-fx="outline">Outline</button>
+    </div>
+  </div>
+
+  <div class="dock-section titled-section">
+    <div class="title-bar">Palette</div>
+    <div class="section-content">
+      <div class="palette-scroll" id="paletteScroll"></div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar" id="status">Ready</div>
+<div class="drop-overlay" id="dropOverlay">Drop image here</div>
+
+<input type="file" id="filePicker" accept="image/*" hidden>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   PALETTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const PALETTES = {
+  frutigeraero: [
+    [0x1a,0x3d,0x5c],[0x2d,0x6b,0x9a],[0x4a,0x9f,0xd4],[0x7e,0xb8,0xda],
+    [0xa8,0xcf,0xe8],[0xd0,0xe8,0xf5],[0xec,0xf4,0xfa],[0xff,0xff,0xff],
+    [0x2e,0xcc,0x71],[0x34,0x98,0xdb],[0x9b,0x59,0xb6],[0xe7,0x4c,0x3c],
+    [0xf3,0x9c,0x12],[0x1a,0xbc,0x9c],[0xfd,0xad,0xb9],[0xb8,0xe0,0xf0],
+  ],
+  pico8: [
+    [0x00,0x00,0x00],[0x1d,0x2b,0x53],[0x7e,0x25,0x53],[0x00,0x87,0x51],
+    [0xab,0x52,0x36],[0x5f,0x57,0x4f],[0xc2,0xc3,0xc7],[0xff,0xf1,0xe8],
+    [0xff,0x00,0x4d],[0xff,0xa3,0x00],[0xff,0xec,0x27],[0x00,0xe4,0x36],
+    [0x29,0xad,0xff],[0x83,0x76,0x9c],[0xff,0x77,0xa8],[0xff,0xcc,0xaa],
+  ],
+  cga: [
+    [0x00,0x00,0x00],[0x55,0x55,0x55],[0xaa,0xaa,0xaa],[0xff,0xff,0xff],
+    [0x00,0x00,0xaa],[0x55,0x55,0xff],[0x00,0xaa,0x00],[0x55,0xff,0x55],
+    [0x00,0xaa,0xaa],[0x55,0xff,0xff],[0xaa,0x00,0x00],[0xff,0x55,0x55],
+    [0xaa,0x00,0xaa],[0xff,0x55,0xff],[0xaa,0x55,0x00],[0xff,0xff,0x55],
+  ],
+  c64: [
+    [0x00,0x00,0x00],[0xff,0xff,0xff],[0x88,0x39,0x32],[0x67,0xb6,0xbd],
+    [0x8b,0x3f,0x96],[0x55,0xa0,0x49],[0x40,0x31,0x8d],[0xbf,0xce,0x72],
+    [0x8b,0x54,0x29],[0x57,0x42,0x00],[0xb8,0x69,0x62],[0x50,0x50,0x50],
+    [0x78,0x78,0x78],[0x94,0xe0,0x89],[0x78,0x69,0xc4],[0x9f,0x9f,0x9f],
+  ],
+  windows95: [
+    [0x00,0x00,0x00],[0x00,0x80,0x80],[0x80,0x00,0x00],[0x00,0x00,0x80],
+    [0x80,0x80,0x00],[0x80,0x00,0x80],[0x00,0x80,0x00],[0x80,0x80,0x80],
+    [0xc0,0xc0,0xc0],[0x00,0xff,0xff],[0xff,0x00,0x00],[0x00,0x00,0xff],
+    [0xff,0xff,0x00],[0xff,0x00,0xff],[0x00,0xff,0x00],[0xff,0xff,0xff],
+  ],
+  vaporwave: [
+    [0x0d,0x02,0x22],[0x1a,0x05,0x3d],[0x2d,0x0a,0x5c],[0x4b,0x0d,0x8a],
+    [0xff,0x71,0xce],[0x01,0xcd,0xfe],[0x05,0xff,0xa1],[0xb9,0x67,0xff],
+    [0xff,0xfb,0x96],[0xff,0x6e,0xb4],[0x7d,0xf9,0xff],[0x39,0xff,0x14],
+    [0xe0,0xac,0x69],[0x94,0x00,0xd3],[0x00,0x00,0x80],[0xff,0x14,0x93],
+  ],
+  appleii: [
+    [0x00,0x00,0x00],[0x55,0x55,0x55],[0xff,0xff,0xff],[0x00,0x88,0x00],
+    [0x00,0xff,0x00],[0x00,0x00,0xff],[0x55,0x55,0xff],[0xff,0x00,0x00],
+    [0xff,0x55,0x55],[0xff,0x88,0x00],[0xff,0xff,0x00],[0x88,0x00,0x88],
+    [0xff,0x00,0xff],[0x00,0x88,0x88],[0x00,0xff,0xff],[0xaa,0xaa,0xaa],
+  ],
+  cyberpunk: [
+    [0x0a,0x0a,0x12],[0x12,0x12,0x25],[0x1e,0x1e,0x3c],[0x2a,0x2a,0x50],
+    [0xff,0x00,0x99],[0x00,0xff,0xee],[0xff,0x66,0x00],[0x99,0x00,0xff],
+    [0x00,0xcc,0xff],[0xff,0x00,0xff],[0x33,0xff,0x99],[0xff,0xcc,0x00],
+    [0x66,0x33,0xff],[0xff,0x33,0x66],[0x66,0xff,0xff],[0xff,0xff,0x00],
+  ],
+  monochrome: [
+    [0x00,0x00,0x00],[0x11,0x11,0x11],[0x22,0x22,0x22],[0x33,0x33,0x33],
+    [0x44,0x44,0x44],[0x55,0x55,0x55],[0x66,0x66,0x66],[0x77,0x77,0x77],
+    [0x88,0x88,0x88],[0x99,0x99,0x99],[0xaa,0xaa,0xaa],[0xbb,0xbb,0xbb],
+    [0xcc,0xcc,0xcc],[0xdd,0xdd,0xdd],[0xee,0xee,0xee],[0xff,0xff,0xff],
+  ],
+};
+
+const PALETTE_NAMES = {
+  frutigeraero: 'Frutiger Aero',
+  pico8: 'PICO-8',
+  cga: 'CGA',
+  c64: 'C64',
+  windows95: 'Windows 95',
+  vaporwave: 'Vaporwave',
+  appleii: 'Apple II',
+  cyberpunk: 'Cyberpunk',
+  monochrome: 'Monochrome',
+};
+
+/* 8×8 Bayer matrix (0–63) */
+const BAYER_8X8 = [
+  [ 0,32, 8,40, 2,34,10,42],
+  [48,16,56,24,50,18,58,26],
+  [12,44, 4,36,14,46, 6,38],
+  [60,28,52,20,62,30,54,22],
+  [ 3,35,11,43, 1,33, 9,41],
+  [51,19,59,27,49,17,57,25],
+  [15,47, 7,39,13,45, 5,37],
+  [63,31,55,23,61,29,53,21],
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+let blockSize = 16;
+let ditherEnabled = false;
+let ghostEnabled = false;
+let outlineEnabled = false;
+let currentPalette = 'frutigeraero';
+let originalImageData = null;
+let srcWidth = 0;
+let srcHeight = 0;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DOM & PALETTE GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const filePicker = document.getElementById('filePicker');
+const status = document.getElementById('status');
+const placeholder = document.getElementById('placeholder');
+const paletteScroll = document.getElementById('paletteScroll');
+
+function buildPaletteGrid() {
+  paletteScroll.innerHTML = '';
+  for (const key of Object.keys(PALETTES)) {
+    const btn = document.createElement('button');
+    btn.className = 'toggle-btn palette-btn' + (key === currentPalette ? ' pressed' : '');
+    btn.dataset.palette = key;
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.innerHTML = PALETTES[key].slice(0, 16).map(([r,g,b]) =>
+      `<span style="background:rgb(${r},${g},${b})"></span>`
+    ).join('');
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = PALETTE_NAMES[key];
+    btn.appendChild(swatch);
+    btn.appendChild(name);
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.palette-btn').forEach(b => b.classList.remove('pressed'));
+      btn.classList.add('pressed');
+      currentPalette = key;
+      processAndPaint();
+    });
+    paletteScroll.appendChild(btn);
+  }
+}
+buildPaletteGrid();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOAD / SAVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+document.getElementById('loadBtn').addEventListener('click', () => filePicker.click());
+
+// Click on canvas frame → load image (entire frame is clickable)
+document.getElementById('canvasFrame').addEventListener('click', () => filePicker.click());
+
+filePicker.addEventListener('change', () => {
+  if (filePicker.files.length) loadFile(filePicker.files[0]);
+});
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  if (!originalImageData) return;
+  const link = document.createElement('a');
+  link.download = 'pixelated.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      srcWidth = img.naturalWidth;
+      srcHeight = img.naturalHeight;
+      const tmp = document.createElement('canvas');
+      tmp.width = srcWidth;
+      tmp.height = srcHeight;
+      const tCtx = tmp.getContext('2d');
+      tCtx.drawImage(img, 0, 0);
+      originalImageData = tCtx.getImageData(0, 0, srcWidth, srcHeight);
+      placeholder.style.display = 'none';
+      status.textContent = `Loaded: ${file.name}  (${srcWidth} × ${srcHeight})`;
+      processAndPaint();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* Drag & drop */
+let dragCounter = 0;
+const dropOverlay = document.getElementById('dropOverlay');
+document.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; dropOverlay.classList.add('visible'); });
+document.addEventListener('dragleave', (e) => { e.preventDefault(); if (--dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.remove('visible'); } });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragCounter = 0;
+  dropOverlay.classList.remove('visible');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOGGLES (Size, FX)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+document.querySelectorAll('[data-size]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('pressed'));
+    btn.classList.add('pressed');
+    blockSize = parseInt(btn.dataset.size, 10);
+    processAndPaint();
+  });
+});
+
+document.querySelectorAll('[data-bg]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('pressed'));
+    btn.classList.add('pressed');
+    const body = document.getElementById('body');
+    if (btn.dataset.bg === 'checkered') {
+      body.classList.add('bg-checkered');
+    } else {
+      body.classList.remove('bg-checkered');
+    }
+  });
+});
+
+document.querySelectorAll('[data-fx]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('pressed');
+    const fx = btn.dataset.fx;
+    if (fx === 'dither') ditherEnabled = btn.classList.contains('pressed');
+    if (fx === 'ghost') ghostEnabled = btn.classList.contains('pressed');
+    if (fx === 'outline') outlineEnabled = btn.classList.contains('pressed');
+    processAndPaint();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROCESSING PIPELINE (unchanged — Redmean, block downsampling, Bayer dither)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function processAndPaint() {
+  if (!originalImageData) return;
+  const t0 = performance.now();
+
+  const w = srcWidth;
+  const h = srcHeight;
+  const palette = PALETTES[currentPalette];
+
+  let result = applyPaletteBayer(
+    downsampleBlocks(originalImageData.data, w, h, blockSize),
+    w, h, blockSize, palette, ditherEnabled
+  );
+  if (outlineEnabled) result = applyOutline(result, w, h, blockSize, palette);
+  if (ghostEnabled) result = applyGhost(result, w, h, 10, 10, 0.3);
+
+  canvas.width = w;
+  canvas.height = h;
+  const outData = ctx.createImageData(w, h);
+  outData.data.set(result);
+  ctx.putImageData(outData, 0, 0);
+
+  const ms = (performance.now() - t0).toFixed(1);
+  status.textContent = `Processed in ${ms} ms  |  Block: ${blockSize}px  |  Dither: ${ditherEnabled ? 'ON' : 'OFF'}  |  Ghost: ${ghostEnabled ? 'ON' : 'OFF'}  |  Outline: ${outlineEnabled ? 'ON' : 'OFF'}  |  Palette: ${PALETTE_NAMES[currentPalette]}  |  ${w} × ${h}`;
+}
+
+function downsampleBlocks(src, w, h, blockSize) {
+  const out = new Uint8ClampedArray(src.length);
+  for (let by = 0; by < h; by += blockSize) {
+    for (let bx = 0; bx < w; bx += blockSize) {
+      const bw = Math.min(blockSize, w - bx);
+      const bh = Math.min(blockSize, h - by);
+      const count = bw * bh;
+      let rSum = 0, gSum = 0, bSum = 0;
+      for (let y = by; y < by + bh; y++) {
+        for (let x = bx; x < bx + bw; x++) {
+          const i = (y * w + x) * 4;
+          rSum += src[i];
+          gSum += src[i + 1];
+          bSum += src[i + 2];
+        }
+      }
+      const avgR = rSum / count;
+      const avgG = gSum / count;
+      const avgB = bSum / count;
+      for (let y = by; y < by + bh; y++) {
+        for (let x = bx; x < bx + bw; x++) {
+          const i = (y * w + x) * 4;
+          out[i] = avgR;
+          out[i + 1] = avgG;
+          out[i + 2] = avgB;
+          out[i + 3] = 255;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function applyPaletteBayer(src, w, h, blockSize, palette, dither) {
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let by = 0; by < h; by += blockSize) {
+    for (let bx = 0; bx < w; bx += blockSize) {
+      const bw = Math.min(blockSize, w - bx);
+      const bh = Math.min(blockSize, h - by);
+      const count = bw * bh;
+      let rSum = 0, gSum = 0, bSum = 0;
+      for (let y = by; y < by + bh; y++) {
+        for (let x = bx; x < bx + bw; x++) {
+          const i = (y * w + x) * 4;
+          rSum += src[i];
+          gSum += src[i + 1];
+          bSum += src[i + 2];
+        }
+      }
+      let avgR = rSum / count;
+      let avgG = gSum / count;
+      let avgB = bSum / count;
+      if (dither) {
+        const t = (BAYER_8X8[by % 8][bx % 8] / 64) - 0.5;
+        const bias = t * 48;
+        avgR = Math.max(0, Math.min(255, avgR + bias));
+        avgG = Math.max(0, Math.min(255, avgG + bias));
+        avgB = Math.max(0, Math.min(255, avgB + bias));
+      }
+      const [nr, ng, nb] = findNearestRedmean(avgR, avgG, avgB, palette);
+      for (let y = by; y < by + bh; y++) {
+        for (let x = bx; x < bx + bw; x++) {
+          const i = (y * w + x) * 4;
+          out[i] = nr;
+          out[i + 1] = ng;
+          out[i + 2] = nb;
+          out[i + 3] = 255;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function findNearestRedmean(r, g, b, palette) {
+  let best = palette[0];
+  let bestDist = Infinity;
+  for (const [pr, pg, pb] of palette) {
+    const dr = r - pr;
+    const dg = g - pg;
+    const db = b - pb;
+    const rBar = (r + pr) / 2;
+    const termR = (2 + rBar / 256) * dr * dr;
+    const termG = 4 * dg * dg;
+    const termB = (2 + (255 - rBar) / 256) * db * db;
+    const dist = Math.sqrt(termR + termG + termB);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = [pr, pg, pb];
+    }
+  }
+  return best;
+}
+
+function applyGhost(src, w, h, offsetX, offsetY, alpha) {
+  const out = new Uint8ClampedArray(w * h * 4);
+  out.set(src);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = x - offsetX;
+      const sy = y - offsetY;
+      if (sx >= 0 && sx < w && sy >= 0 && sy < h) {
+        const dst = (y * w + x) * 4;
+        const sIdx = (sy * w + sx) * 4;
+        out[dst]   = Math.round(out[dst]   * (1 - alpha) + src[sIdx]   * alpha);
+        out[dst+1] = Math.round(out[dst+1] * (1 - alpha) + src[sIdx+1] * alpha);
+        out[dst+2] = Math.round(out[dst+2] * (1 - alpha) + src[sIdx+2] * alpha);
+      }
+    }
+  }
+  return out;
+}
+
+function applyOutline(src, w, h, blockSize, palette) {
+  const out = new Uint8ClampedArray(src);
+  let [orR, orG, orB] = palette[0] || [0, 0, 0];
+  if (orR + orG + orB > 384) {
+    orR = Math.max(0, orR - 80);
+    orG = Math.max(0, orG - 80);
+    orB = Math.max(0, orB - 80);
+  }
+  const lineW = blockSize >= 16 ? 2 : 1;
+  const same = (i, j) =>
+    src[i] === src[j] && src[i+1] === src[j+1] && src[i+2] === src[j+2];
+  for (let by = 0; by < h; by += blockSize) {
+    for (let bx = 0; bx < w; bx += blockSize) {
+      const cur = (by * w + bx) * 4;
+      const nRight = bx + blockSize < w ? ((by * w + bx + blockSize) * 4) : cur;
+      const nBottom = by + blockSize < h ? (((by + blockSize) * w + bx) * 4) : cur;
+      if (!same(cur, nRight)) {
+        for (let dy = 0; dy < Math.min(blockSize, h - by); dy++) {
+          for (let d = 0; d < lineW && bx + blockSize + d < w; d++) {
+            const i = (by + dy) * w * 4 + (bx + blockSize + d) * 4;
+            out[i] = orR; out[i+1] = orG; out[i+2] = orB;
+          }
+        }
+      }
+      if (!same(cur, nBottom)) {
+        for (let dx = 0; dx < Math.min(blockSize, w - bx); dx++) {
+          for (let d = 0; d < lineW && by + blockSize + d < h; d++) {
+            const i = ((by + blockSize + d) * w + bx + dx) * 4;
+            out[i] = orR; out[i+1] = orG; out[i+2] = orB;
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+@echo off
+echo Opening Poly Pixelator...
+start "" "%~dp0index.html"
