@@ -168,7 +168,7 @@ public class PolyPixelator extends JFrame {
         JPanel rightSidebar = new SwitchableBackgroundPanel(new BorderLayout(0, 0), () -> backgroundMode);
         rightSidebar.setPreferredSize(new Dimension(140, 0));
         rightSidebar.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.GRAY));
-        JPanel bgSection = createTitledSection("Background", createBackgroundOptions());
+        JPanel bgSection = createTitledSection("Background colours", createBackgroundOptions());
         rightSidebar.add(bgSection, BorderLayout.NORTH);
         centerWrap.add(rightSidebar, BorderLayout.EAST);
 
@@ -304,7 +304,7 @@ public class PolyPixelator extends JFrame {
         content.setOpaque(false);
         content.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         ButtonGroup bgGroup = new ButtonGroup();
-        JToggleButton greenBtn = createWinToggleButton("Greenish");
+        JToggleButton greenBtn = createWinToggleButton("piss 1");
         greenBtn.setPreferredSize(new Dimension(120, 48));
         greenBtn.setMinimumSize(new Dimension(120, 48));
         greenBtn.setMaximumSize(new Dimension(200, 48));
@@ -314,7 +314,7 @@ public class PolyPixelator extends JFrame {
             backgroundMode = "greenish";
             getContentPane().repaint();
         });
-        JToggleButton checkBtn = createWinToggleButton("Checkered");
+        JToggleButton checkBtn = createWinToggleButton("piss 2");
         checkBtn.setPreferredSize(new Dimension(120, 48));
         checkBtn.setMinimumSize(new Dimension(120, 48));
         checkBtn.setMaximumSize(new Dimension(200, 48));
