@@ -139,12 +139,12 @@
   }
 
   .canvas-frame.border-blackwhite {
-    border: 4px solid #000 !important;
-    box-shadow: inset 0 0 0 1px #fff !important;
+    border: 8px solid #000 !important;
+    box-shadow: inset 0 0 0 2px #fff !important;
   }
   .canvas-frame.border-navy {
-    border: 4px solid #000080 !important;
-    box-shadow: inset 0 0 0 1px #4169e1 !important;
+    border: 8px solid #000080 !important;
+    box-shadow: inset 0 0 0 2px #4169e1 !important;
   }
 
   .canvas-frame:hover {
@@ -555,23 +555,23 @@ const PALETTES = {
     [0x8b,0x45,0x13],[0xa0,0x52,0x2d],[0xcd,0x5c,0x5c],[0xda,0x70,0x6a],
     [0x4a,0x2c,0x0a],[0x6b,0x3e,0x1a],[0xff,0xd7,0x00],[0xff,0xef,0xd5],
   ],
-  brightwinter: [
-    [0xe0,0xff,0xff],[0xb0,0xe0,0xff],[0x87,0xce,0xeb],[0xad,0xd8,0xe6],
-    [0xff,0xff,0xff],[0xf0,0xf8,0xff],[0xe6,0xf2,0xff],[0xcf,0xe9,0xff],
-    [0x00,0xbf,0xff],[0x5d,0xae,0xea],[0x7b,0x68,0xee],[0x93,0x70,0xdb],
-    [0xb0,0xc4,0xde],[0xc8,0xd4,0xe8],[0x70,0x80,0x90],[0x2f,0x4f,0x6f],
+  universal: [
+    [0x14,0x0c,0x1c],[0x44,0x24,0x34],[0x30,0x34,0x6d],[0x4e,0x4a,0x4e],
+    [0x85,0x4c,0x30],[0x34,0x65,0x24],[0xd0,0x46,0x48],[0x75,0x71,0x61],
+    [0x59,0x7d,0xce],[0xd2,0x7d,0x2c],[0x85,0x95,0xa1],[0x6d,0xaa,0x2c],
+    [0xd2,0xaa,0x99],[0x6d,0xc2,0xca],[0xda,0xd4,0x5e],[0xde,0xee,0xd6],
   ],
 };
 
 const PALETTE_NAMES = {
   original: 'Original',
+  universal: 'Universal',
   frutigeraero: 'Frutiger Aero',
   glossyvista: 'Glossy Vista',
   warmautumn: 'Warm Autumn',
-  brightwinter: 'Bright Winter',
 };
 
-const PALETTE_ORDER = ['original', 'frutigeraero', 'glossyvista', 'warmautumn', 'brightwinter'];
+const PALETTE_ORDER = ['original', 'universal', 'frutigeraero', 'glossyvista', 'warmautumn'];
 
 function extractOriginalPalette(data, w, h) {
   const colors = [];
@@ -638,7 +638,7 @@ let blockSize = 6;
 let ditherEnabled = false;
 let ghostEnabled = false;
 let outlineEnabled = false;
-let currentPalette = 'original';
+let currentPalette = 'universal';
 let originalImageData = null;
 let cachedOriginalPalette = null;
 
@@ -748,6 +748,7 @@ function loadFile(file) {
       const tCtx = tmp.getContext('2d');
       tCtx.drawImage(img, 0, 0);
       originalImageData = tCtx.getImageData(0, 0, srcWidth, srcHeight);
+      cachedOriginalPalette = null;
       placeholder.style.display = 'none';
       status.textContent = `Loaded: ${file.name}  (${srcWidth} × ${srcHeight})`;
       scheduleProcess();
@@ -925,8 +926,8 @@ function drawDialogOverlay(ctx, w, h) {
   const sizeVal = Math.max(10, Math.min(100, dialogBoxSize));
   const scale = (sizeVal - 10) / 90; // 0 at 10, 1 at 100
   const boxW = Math.max(120, Math.round(w * (0.30 + 0.65 * scale)));
-  const boxH = Math.max(60, Math.round(h * (0.10 + 0.40 * scale)));
-  const fontSz = Math.max(20, Math.min(36, Math.floor(Math.min(boxW, boxH) / 6)));
+  const boxH = Math.max(56, Math.round(h * (0.08 + 0.28 * scale)));
+  const fontSz = Math.max(24, Math.min(44, Math.floor(Math.min(boxW, boxH) / 5)));
   const pad = Math.max(8, Math.round(Math.min(boxW, boxH) / 10));
   const boxX = (w - boxW) / 2;
   const posPct = Math.max(0, Math.min(100, dialogPosition)) / 100;
@@ -935,15 +936,16 @@ function drawDialogOverlay(ctx, w, h) {
   ctx.save();
   ctx.font = `${fontSz}px "MS Sans Serif", "Microsoft Sans Serif", "Segoe UI", Tahoma, sans-serif`;
 
-  const displayName = dialogName.replace(/[:\s]+$/, '').trim();
-  const displayText = dialogText.replace(/^\s*>\s*/, '');
+  const displayName = (dialogName || '').replace(/[:\s]+$/, '').trim();
+  const rawText = (dialogText || '').replace(/^\s*>\s*/, '').trim();
+  const textWithPrompt = rawText ? '> ' + rawText : '';
   const lineH = fontSz + 6;
-  const nameGap = (displayName && displayText) ? Math.round(lineH * 0.3) : 0;
+  const nameGap = (displayName && textWithPrompt) ? Math.round(lineH * 0.3) : 0;
 
   // Count lines for vertical centering
   let numLines = 0;
   if (displayName) numLines++;
-  if (displayText) numLines++;
+  if (textWithPrompt) numLines++;
   const totalH = numLines * lineH + nameGap;
   const startY = boxY + (boxH - totalH) / 2 + fontSz;
   const textX = boxX + pad;
@@ -962,7 +964,7 @@ function drawDialogOverlay(ctx, w, h) {
       curY += lineH + nameGap;
     }
     ctx.fillStyle = '#ffffff';
-    if (displayText) ctx.fillText(displayText, textX, curY);
+    if (textWithPrompt) ctx.fillText(textWithPrompt, textX, curY);
 
   } else if (dialogStyle === 'classic') {
     ctx.fillStyle = '#000000';
@@ -977,7 +979,7 @@ function drawDialogOverlay(ctx, w, h) {
       curY += lineH + nameGap;
     }
     ctx.fillStyle = '#ffffff';
-    if (displayText) ctx.fillText(displayText, textX, curY);
+    if (textWithPrompt) ctx.fillText(textWithPrompt, textX, curY);
 
   } else if (dialogStyle === 'ghost') {
     let curY = startY;
@@ -985,7 +987,7 @@ function drawDialogOverlay(ctx, w, h) {
       drawOutlinedText(ctx, displayName, textX, curY, '#ffff00', '#000000', 2);
       curY += lineH + nameGap;
     }
-    if (displayText) drawOutlinedText(ctx, displayText, textX, curY, '#ffffff', '#000000', 2);
+    if (textWithPrompt) drawOutlinedText(ctx, textWithPrompt, textX, curY, '#ffffff', '#000000', 2);
 
   } else {
     // Modern
@@ -1001,7 +1003,7 @@ function drawDialogOverlay(ctx, w, h) {
       curY += lineH + nameGap;
     }
     ctx.fillStyle = '#ffffff';
-    if (displayText) ctx.fillText(displayText, textX, curY);
+    if (textWithPrompt) ctx.fillText(textWithPrompt, textX, curY);
   }
 
   ctx.restore();
@@ -1022,18 +1024,18 @@ function drawCanvasBorder(ctx, w, h) {
   ctx.save();
   if (borderStyle === 'blackwhite') {
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 14;
     ctx.strokeRect(0, 0, w, h);
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.lineWidth = 4;
+    ctx.strokeRect(7, 7, w - 14, h - 14);
   } else if (borderStyle === 'navy') {
     ctx.strokeStyle = '#000080';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 14;
     ctx.strokeRect(0, 0, w, h);
     ctx.strokeStyle = '#4169e1';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.lineWidth = 4;
+    ctx.strokeRect(7, 7, w - 14, h - 14);
   }
   ctx.restore();
 }
