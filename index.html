@@ -922,13 +922,14 @@ function processAndPaint() {
 }
 
 function drawDialogOverlay(ctx, w, h) {
-  // Box size 10–100 scales both width and height smoothly
+  const ref = Math.min(w, h);
   const sizeVal = Math.max(10, Math.min(100, dialogBoxSize));
-  const scale = (sizeVal - 10) / 90; // 0 at 10, 1 at 100
-  const boxW = Math.max(120, Math.round(w * (0.30 + 0.65 * scale)));
-  const boxH = Math.max(56, Math.round(h * (0.08 + 0.28 * scale)));
-  const fontSz = Math.max(24, Math.min(44, Math.floor(Math.min(boxW, boxH) / 5)));
-  const pad = Math.max(8, Math.round(Math.min(boxW, boxH) / 10));
+  const scale = (sizeVal - 10) / 90;
+  const boxW = Math.max(Math.round(ref * 0.25), Math.round(w * (0.30 + 0.65 * scale)));
+  const boxH = Math.max(Math.round(ref * 0.12), Math.round(h * (0.08 + 0.28 * scale)));
+  const fontSz = Math.max(Math.round(ref * 0.04), Math.round(Math.min(boxW, boxH) / 5));
+  const pad = Math.max(Math.round(ref * 0.015), Math.round(Math.min(boxW, boxH) / 10));
+  const strokeW = Math.max(1, Math.round(ref / 300));
   const boxX = (w - boxW) / 2;
   const posPct = Math.max(0, Math.min(100, dialogPosition)) / 100;
   const boxY = Math.round((h - boxH - pad) * (1 - posPct)) + pad;
@@ -939,24 +940,24 @@ function drawDialogOverlay(ctx, w, h) {
   const displayName = (dialogName || '').replace(/[:\s]+$/, '').trim();
   const rawText = (dialogText || '').replace(/^\s*>\s*/, '').trim();
   const textWithPrompt = rawText ? '> ' + rawText : '';
-  const lineH = fontSz + 6;
+  const lineH = fontSz + Math.round(fontSz * 0.25);
   const nameGap = (displayName && textWithPrompt) ? Math.round(lineH * 0.3) : 0;
 
-  // Count lines for vertical centering
   let numLines = 0;
   if (displayName) numLines++;
   if (textWithPrompt) numLines++;
   const totalH = numLines * lineH + nameGap;
   const startY = boxY + (boxH - totalH) / 2 + fontSz;
   const textX = boxX + pad;
+  const outlineThickness = Math.max(1, Math.round(ref / 250));
 
   if (dialogStyle === 'jrpg') {
     ctx.fillStyle = '#000080';
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = strokeW;
     ctx.strokeRect(boxX, boxY, boxW, boxH);
-    ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+    ctx.strokeRect(boxX + strokeW, boxY + strokeW, boxW - strokeW * 2, boxH - strokeW * 2);
     let curY = startY;
     if (displayName) {
       ctx.fillStyle = '#ffff00';
@@ -970,7 +971,7 @@ function drawDialogOverlay(ctx, w, h) {
     ctx.fillStyle = '#000000';
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = strokeW * 2;
     ctx.strokeRect(boxX, boxY, boxW, boxH);
     let curY = startY;
     if (displayName) {
@@ -984,17 +985,16 @@ function drawDialogOverlay(ctx, w, h) {
   } else if (dialogStyle === 'ghost') {
     let curY = startY;
     if (displayName) {
-      drawOutlinedText(ctx, displayName, textX, curY, '#ffff00', '#000000', 2);
+      drawOutlinedText(ctx, displayName, textX, curY, '#ffff00', '#000000', outlineThickness);
       curY += lineH + nameGap;
     }
-    if (textWithPrompt) drawOutlinedText(ctx, textWithPrompt, textX, curY, '#ffffff', '#000000', 2);
+    if (textWithPrompt) drawOutlinedText(ctx, textWithPrompt, textX, curY, '#ffffff', '#000000', outlineThickness);
 
   } else {
-    // Modern
     ctx.fillStyle = 'rgba(42,42,42,0.85)';
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = strokeW;
     ctx.strokeRect(boxX + 1, boxY + 1, boxW - 2, boxH - 2);
     let curY = startY;
     if (displayName) {
